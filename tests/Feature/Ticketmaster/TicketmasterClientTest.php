@@ -25,6 +25,20 @@ it('searches music attractions and picks the widest 16:9 image', function () {
         && tmQuery($r)['apikey'] === 'test-key');
 });
 
+it('ranks exact name matches first and requests relevance sorting', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['attractions' => [
+        ['id' => 'A1', 'name' => 'Ultimate Coldplay'],
+        ['id' => 'A2', 'name' => ' Coldplay '],
+        ['id' => 'A3', 'name' => 'Coldplay Tribute'],
+    ]]])]);
+
+    $results = app(TicketmasterClient::class)->searchAttractions('coldplay');
+
+    expect(array_map(fn ($a) => $a->id, $results))->toBe(['A2', 'A1', 'A3']);
+
+    Http::assertSent(fn (Request $r) => tmQuery($r)['sort'] === 'relevance,desc');
+});
+
 it('returns no attractions when Ticketmaster has none', function () {
     Http::fake(['app.ticketmaster.com/*' => Http::response(tmFixture('empty'))]);
 

@@ -25,10 +25,17 @@ class TicketmasterClient
         $json = $this->get('/attractions.json', [
             'keyword' => $keyword,
             'classificationName' => 'music',
+            'sort' => 'relevance,desc',
             'size' => 20,
         ]);
 
-        return array_map($this->toArtist(...), $json['_embedded']['attractions'] ?? []);
+        $artists = array_map($this->toArtist(...), $json['_embedded']['attractions'] ?? []);
+
+        // Exact name matches first; usort is stable (PHP 8+) so Ticketmaster's order is otherwise kept.
+        $needle = mb_strtolower(trim($keyword));
+        usort($artists, fn (ArtistData $a, ArtistData $b) => (mb_strtolower(trim($b->name)) === $needle) <=> (mb_strtolower(trim($a->name)) === $needle));
+
+        return $artists;
     }
 
     public function attraction(string $id): ArtistData
