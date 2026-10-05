@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 interface Result {
     id: string;
@@ -11,6 +11,8 @@ interface Result {
 }
 
 const props = defineProps<{ q: string; results: Result[]; error: string | null }>();
+
+const flashError = computed(() => usePage().props.flash?.error as string | null | undefined);
 
 const query = ref(props.q);
 const input = ref<HTMLInputElement | null>(null);
@@ -39,7 +41,7 @@ function toggleFollow(result: Result) {
     const options = {
         preserveScroll: true,
         preserveState: true,
-        only: ['results'],
+        only: ['results', 'flash'],
         onFinish: () => {
             pendingId.value = null;
         },
@@ -64,6 +66,8 @@ function toggleFollow(result: Result) {
                 placeholder="Search for an artist…"
                 class="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base dark:border-neutral-700 dark:bg-neutral-900"
             />
+
+            <p v-if="flashError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{{ flashError }}</p>
 
             <p v-if="error" class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{{ error }}</p>
 

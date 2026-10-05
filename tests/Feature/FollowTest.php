@@ -98,3 +98,62 @@ it('marks concerts stored while following as already alerted', function () {
     expect($concerts)->not->toBeEmpty()
         ->and($concerts->whereNull('alerted_at'))->toBeEmpty();
 });
+
+it('flashes an error and does not follow when the artist is unknown', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response([], 404)]);
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->from('/search')->post('/artists/UNKNOWN1/follow')
+        ->assertRedirect('/search')
+        ->assertSessionHas('error', "We couldn't find that artist.");
+
+    expect($user->artists()->count())->toBe(0);
+});
+
+it('flashes an error and does not follow when Ticketmaster fails', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response([], 500)]);
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->from('/search')->post('/artists/UNKNOWN1/follow')
+        ->assertRedirect('/search')
+        ->assertSessionHas('error', "Couldn't follow right now. Please try again.");
+
+    expect($user->artists()->count())->toBe(0);
+});
+
+it('redirects unverified users to the verification notice when following', function () {
+    $this->actingAs(User::factory()->unverified()->create())->post('/artists/K8vZ917G1V0/follow')
+        ->assertRedirect(route('verification.notice'));
+});
+
+it('404s when unfollowing an unknown artist', function () {
+    $this->actingAs(User::factory()->create())->delete('/artists/UNKNOWN1/follow')->assertNotFound();
+});
+
+it('quietly redirects when unfollowing an artist that is not followed', function () {
+    $artist = Artist::factory()->create();
+
+    $this->actingAs(User::factory()->create())->delete("/artists/{$artist->ticketmaster_id}/follow")
+        ->assertRedirect()
+        ->assertSessionHasNoErrors()
+        ->assertSessionMissing('error');
+});
+
+it('leaves another user\'s follow untouched when changing scope or unfollowing', function () {
+    $a = User::factory()->create();
+    $b = User::factory()->create();
+    $artist = Artist::factory()->create();
+    $a->artists()->attach($artist, ['last_seen_at' => now()]);
+    $b->artists()->attach($artist, ['alert_scope' => 'everywhere', 'last_seen_at' => now()]);
+
+    $this->actingAs($a)->patch("/artists/{$artist->ticketmaster_id}/follow", ['alert_scope' => 'nearby'])->assertRedirect();
+    expect($b->artists()->first()->pivot->alert_scope)->toBe('everywhere');
+
+    $this->actingAs($a)->delete("/artists/{$artist->ticketmaster_id}/follow")->assertRedirect();
+    expect($a->artists()->count())->toBe(0)->and($b->artists()->count())->toBe(1);
+});
+
+it('shares the flash error with Inertia pages', function () {
+    $this->actingAs(User::factory()->create())->withSession(['error' => 'Boom'])->get('/search')
+        ->assertInertia(fn ($page) => $page->where('flash.error', 'Boom'));
+});

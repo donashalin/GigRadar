@@ -18,16 +18,13 @@ class FollowController extends Controller
         try {
             $artist = $resolver->resolve($ticketmasterId);
         } catch (TicketmasterException $e) {
-            abort($e->isNotFound() ? 404 : 503);
+            return back()->with('error', $e->isNotFound() ? "We couldn't find that artist." : "Couldn't follow right now. Please try again.");
         }
 
-        $user = $request->user();
-        if (! $user->artists()->where('artists.id', $artist->id)->exists()) {
-            try {
-                $user->artists()->attach($artist, ['last_seen_at' => now()]);
-            } catch (UniqueConstraintViolationException) {
-                // Double-submit: already following, keep the existing row untouched.
-            }
+        try {
+            $request->user()->artists()->attach($artist, ['last_seen_at' => now()]);
+        } catch (UniqueConstraintViolationException) {
+            // Double-submit: already following, keep the existing row untouched.
         }
 
         // Store current dates now so they never trigger "new date" alerts later.

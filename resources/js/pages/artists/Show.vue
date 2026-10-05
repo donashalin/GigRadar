@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 type AlertScope = 'everywhere' | 'nearby';
 
@@ -24,6 +24,8 @@ const props = defineProps<{
     alertScope: AlertScope | null;
     refreshFailed: boolean;
 }>();
+
+const flashError = computed(() => usePage().props.flash?.error as string | null | undefined);
 
 const followUrl = `/artists/${props.artist.ticketmasterId}/follow`;
 const pending = ref(false);
@@ -104,6 +106,8 @@ function formatDate(concert: Concert): string {
                     </button>
                 </div>
             </div>
+
+            <p v-if="flashError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{{ flashError }}</p>
 
             <p v-if="refreshFailed" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                 Couldn't refresh — showing saved dates.
