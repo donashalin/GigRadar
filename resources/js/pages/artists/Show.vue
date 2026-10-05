@@ -46,6 +46,16 @@ function toggleFollow() {
     }
 }
 
+function retry() {
+    if (pending.value) return;
+    pending.value = true;
+    router.reload({
+        onFinish: () => {
+            pending.value = false;
+        },
+    });
+}
+
 function setScope(alert_scope: AlertScope) {
     if (pending.value) return;
     pending.value = true;
@@ -109,13 +119,29 @@ function formatDate(concert: Concert): string {
 
             <p v-if="flashError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{{ flashError }}</p>
 
-            <p v-if="refreshFailed" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <div
+                v-if="refreshFailed && concerts.length === 0"
+                role="alert"
+                class="mt-4 flex items-center justify-between gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+            >
+                <span>Couldn't load dates right now.</span>
+                <button
+                    type="button"
+                    :disabled="pending"
+                    class="min-h-11 shrink-0 rounded-full border border-red-700 px-4 text-sm font-medium disabled:opacity-60 dark:border-red-300"
+                    @click="retry"
+                >
+                    Retry
+                </button>
+            </div>
+
+            <p v-else-if="refreshFailed" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                 Couldn't refresh — showing saved dates.
             </p>
 
             <h2 class="mt-6 text-lg font-semibold">Upcoming concerts</h2>
 
-            <p v-if="concerts.length === 0" class="mt-3 text-sm text-neutral-500">
+            <p v-if="concerts.length === 0 && !refreshFailed" class="mt-3 text-sm text-neutral-500">
                 No upcoming dates — we'll alert you when they're announced.
             </p>
 
@@ -138,7 +164,7 @@ function formatDate(concert: Concert): string {
                         rel="noopener noreferrer"
                         class="inline-flex min-h-11 shrink-0 items-center rounded-full border border-violet-600 px-4 py-1.5 text-sm font-medium text-violet-600"
                     >
-                        Tickets
+                        Get tickets
                     </a>
                 </li>
             </ul>
