@@ -147,6 +147,7 @@ Alerts are driven by `concerts.alerted_at`, not by which sync first saw a concer
    - Body: "{N} new date(s), including {city} – {d M}" (earliest qualifying concert)
    - Link: `/artists/{ticketmasterId}`
 6. Stamp all pending concerts for the artist `alerted_at = now` (whether or not anyone was in range).
+   Stamp and queue notifications in the same DB transaction (queued notifications use `afterCommit`), so a crash between the two can't cause a repeat alert.
 7. Delete concerts with `starts_at` before today.
 
 ## 8. Error handling
