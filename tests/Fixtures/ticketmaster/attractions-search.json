@@ -1,0 +1,17 @@
+{
+  "_embedded": {
+    "attractions": [
+      {
+        "id": "K8vZ917G1V0",
+        "name": "Fontaines D.C.",
+        "images": [
+          { "ratio": "3_2", "url": "https://s1.ticketm.net/dam/a/small.jpg", "width": 305 },
+          { "ratio": "16_9", "url": "https://s1.ticketm.net/dam/a/large.jpg", "width": 1024 },
+          { "ratio": "16_9", "url": "https://s1.ticketm.net/dam/a/medium.jpg", "width": 640 }
+        ]
+      },
+      { "id": "K8vZ9171ob7", "name": "Fontaines Tribute Band" }
+    ]
+  },
+  "page": { "size": 20, "totalElements": 2, "totalPages": 1, "number": 0 }
+}

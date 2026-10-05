@@ -11,7 +11,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Ticketmaster\TicketmasterClient::class, fn () => new \App\Services\Ticketmaster\TicketmasterClient(
+            (string) config('services.ticketmaster.key'),
+            (int) config('services.ticketmaster.throttle_ms'),
+        ));
     }
 
     /**

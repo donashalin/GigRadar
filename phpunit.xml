@@ -29,5 +29,7 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="TICKETMASTER_API_KEY" value="test-key"/>
+        <env name="TICKETMASTER_THROTTLE_MS" value="0"/>
     </php>
 </phpunit>

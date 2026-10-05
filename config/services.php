@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'ticketmaster' => [
+        'key' => env('TICKETMASTER_API_KEY'),
+        'throttle_ms' => (int) env('TICKETMASTER_THROTTLE_MS', 250),
+    ],
+
 ];

@@ -1,0 +1,43 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vYZ9abc001",
+        "name": "Fontaines D.C. - Romance Tour",
+        "url": "https://www.ticketmaster.co.uk/event/001",
+        "dates": {
+          "start": { "localDate": "2027-03-14", "dateTime": "2027-03-14T19:30:00Z" },
+          "status": { "code": "onsale" }
+        },
+        "_embedded": {
+          "venues": [{
+            "name": "O2 Victoria Warehouse",
+            "city": { "name": "Manchester" },
+            "country": { "countryCode": "GB" },
+            "location": { "latitude": "53.4668", "longitude": "-2.2850" }
+          }]
+        }
+      },
+      {
+        "id": "G5vYZ9abc002",
+        "name": "Fontaines D.C.",
+        "url": "https://www.ticketmaster.co.uk/event/002",
+        "dates": {
+          "start": { "localDate": "2027-04-02" },
+          "status": { "code": "cancelled" }
+        },
+        "_embedded": {
+          "venues": [{ "name": "Olympia", "city": { "name": "Dublin" }, "country": { "countryCode": "IE" } }]
+        }
+      },
+      {
+        "id": "G5vYZ9abc003",
+        "name": "Fontaines D.C. - TBA",
+        "url": "https://www.ticketmaster.co.uk/event/003",
+        "dates": { "start": { "dateTBA": true }, "status": { "code": "offsale" } },
+        "_embedded": { "venues": [{ "name": "TBA", "city": { "name": "London" }, "country": { "countryCode": "GB" } }] }
+      }
+    ]
+  },
+  "page": { "size": 200, "totalElements": 3, "totalPages": 1, "number": 0 }
+}

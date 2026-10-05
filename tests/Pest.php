@@ -45,3 +45,16 @@ function something()
 {
     // ..
 }
+
+function tmFixture(string $name): array
+{
+    return json_decode(file_get_contents(__DIR__."/Fixtures/ticketmaster/{$name}.json"), true);
+}
+
+/** Query-string parameters of a faked HTTP request, as strings. */
+function tmQuery(Illuminate\Http\Client\Request $request): array
+{
+    parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+    return $query;
+}
