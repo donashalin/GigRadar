@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 interface Result {
     id: string;
@@ -13,10 +13,13 @@ interface Result {
 const props = defineProps<{ q: string; results: Result[]; error: string | null }>();
 
 const query = ref(props.q);
+const input = ref<HTMLInputElement | null>(null);
+const pendingId = ref<string | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 watch(query, (value) => {
     clearTimeout(timer);
+    if (value.trim() === props.q) return;
     timer = setTimeout(() => {
         router.get('/search', value.trim().length >= 2 ? { q: value.trim() } : {}, {
             preserveState: true,
@@ -26,9 +29,21 @@ watch(query, (value) => {
     }, 300);
 });
 
+onMounted(() => input.value?.focus());
+onBeforeUnmount(() => clearTimeout(timer));
+
 function toggleFollow(result: Result) {
+    if (pendingId.value !== null) return;
+    pendingId.value = result.id;
     const url = `/artists/${result.id}/follow`;
-    const options = { preserveScroll: true, preserveState: true, only: ['results'] };
+    const options = {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['results'],
+        onFinish: () => {
+            pendingId.value = null;
+        },
+    };
     if (result.following) {
         router.delete(url, options);
     } else {
@@ -42,9 +57,10 @@ function toggleFollow(result: Result) {
     <AppLayout :breadcrumbs="[{ title: 'Search', href: '/search' }]">
         <div class="mx-auto w-full max-w-xl p-4">
             <input
+                ref="input"
                 v-model="query"
                 type="search"
-                autofocus
+                aria-label="Search for an artist"
                 placeholder="Search for an artist…"
                 class="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base dark:border-neutral-700 dark:bg-neutral-900"
             />
@@ -64,7 +80,9 @@ function toggleFollow(result: Result) {
                     </Link>
                     <button
                         type="button"
-                        class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium"
+                        :aria-pressed="result.following"
+                        :disabled="pendingId === result.id"
+                        class="min-h-11 shrink-0 rounded-full px-4 py-1.5 text-sm font-medium disabled:opacity-60"
                         :class="result.following ? 'bg-neutral-200 dark:bg-neutral-800' : 'bg-violet-600 text-white'"
                         @click="toggleFollow(result)"
                     >
