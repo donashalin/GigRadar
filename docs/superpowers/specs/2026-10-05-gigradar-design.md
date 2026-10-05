@@ -2,189 +2,183 @@
 
 **Date:** 2026-10-05
 **Status:** Approved design, pending implementation plan
-**Type:** Personal side project — iOS App Store app
+**Type:** Personal side project — mobile-first Progressive Web App (PWA)
+**Supersedes:** the earlier native iOS / Firebase design (see git history). Dropped because the development Mac (2017 Intel MacBook Pro, macOS 13, max Xcode 15.4) cannot build for the App Store or install on current iOS versions.
 
 ## 1. Purpose
 
-GigRadar alerts fans when their favourite artists announce new concert dates or locations. Users register, search for artists, follow them, browse upcoming concerts, and receive push notifications when new tour dates are released.
+GigRadar alerts fans when their favourite artists announce new concert dates or locations. Users register, search for artists, follow them, browse upcoming concerts, and receive email and/or web push alerts when new tour dates are released.
 
 ## 2. Decisions
 
 | Area | Decision |
 |---|---|
-| iOS app | Native SwiftUI (iOS 17+, `@Observable`) |
-| Backend | Firebase: Authentication, Firestore, Cloud Functions (TypeScript), Cloud Messaging (FCM → APNs) |
+| App type | Mobile-first PWA, installable to the iPhone/Android Home Screen |
+| Backend | Latest Laravel, MySQL, queues (database driver), scheduler |
+| Frontend | Official Laravel Vue starter kit (Inertia + Vue 3 + TypeScript + Tailwind) |
+| PWA | `vite-plugin-pwa` (manifest, icons, service worker) |
 | Concert data | Ticketmaster Discovery API (free key, 5,000 calls/day, 5 req/sec) |
-| Sign-in | Sign in with Apple + email/password (with email verification and password reset) |
+| Auth | Email + password (starter kit auth): registration, email verification, password reset |
+| Alert channels | Email (Resend) and Web Push (`laravel-notification-channels/webpush`, VAPID). No SMS in v1. |
 | Alert rules | Per-artist choice: `everywhere` or `nearby` (within user's radius of home location) |
-| Firebase plan | Blaze (pay-as-you-go, required for scheduled functions); budget alert set at £5/month |
+| Geocoding | OpenStreetMap Nominatim for typed cities (cached); browser Geolocation API for "use my location" |
+| Testing | Pest |
+| Hosting | Decided at deploy time (Forge-managed VPS or Laravel Cloud); code is host-agnostic |
 
 ## 3. Architecture
 
 ```
-iPhone (SwiftUI) ──Firebase SDK──► Firebase
-                                   ├─ Auth
-                                   ├─ Firestore
-                                   ├─ Cloud Functions (TS)
-                                   │   ├─ searchArtists()      callable  ──► Ticketmaster
-                                   │   ├─ getArtistEvents()    callable  ──► Ticketmaster
-                                   │   ├─ checkNewDates()      scheduled, every 6 hours
-                                   │   ├─ onFollowWrite()      Firestore trigger (followerCount)
-                                   │   └─ onUserDelete()       Auth trigger (data cleanup)
-                                   └─ FCM ──► APNs ──► iPhone
+Phone browser / Home-Screen PWA (Vue 3 + Inertia)
+        │  HTTPS
+        ▼
+Laravel app ───────────────────────────────► Ticketmaster Discovery API
+  ├─ Auth (starter kit)
+  ├─ Controllers: Search, Artist, Follow, Dashboard, Settings, PushSubscription
+  ├─ Scheduler: gigradar:check-dates (every 6 hours)
+  ├─ Queue worker: delivers notifications
+  └─ Notifications: NewTourDates → mail, webpush
+        │                       │
+        ▼                       ▼
+   Resend (email)      Browser push services (Apple / Google / Mozilla)
+
+MySQL: users, artists, follows, events, push_subscriptions, jobs, cache
 ```
 
-**The app never calls Ticketmaster directly.** All Ticketmaster access goes through Cloud Functions, so that:
-- the API key is stored as a Firebase secret (`TICKETMASTER_API_KEY`) and never ships in the app;
-- results are cached in Firestore, keeping usage under the daily quota;
-- the data source can be changed without an app update.
+- The browser never calls Ticketmaster; the API key lives in `.env` (`TICKETMASTER_API_KEY`) and is used only server-side.
+- Ticketmaster responses are stored in MySQL / cache so pages render from the database and API usage stays low.
 
 ## 4. Screens
 
-Tab bar with three tabs: **My Artists**, **Search**, **Settings**. Artist Detail is pushed onto the navigation stack from Search or My Artists.
+Mobile-first layout with a fixed bottom tab bar: **My Artists**, **Search**, **Settings**. Artist Detail is a full-screen page reached from Search or My Artists. Auth pages come from the starter kit, restyled mobile-first.
 
-1. **Welcome / Sign in** — shown when signed out. Sign in with Apple button; email sign-up, sign-in, and "forgot password".
-2. **Search** — text field with 300 ms debounce, min 2 characters; calls `searchArtists`. Results show image, name, and Follow button.
-3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed, "Get tickets" opens `ticketUrl` in Safari). Follow/Unfollow toggle. Alert scope picker (`Everywhere` / `Near me`), shown only when following. Opening this screen updates the follow's `lastSeenAt`.
-4. **My Artists** (home) — followed artists, sorted by name, with a "New" badge where any event's `firstSeenAt > follow.lastSeenAt`. Section "Upcoming near you": next 10 events across followed artists within the user's radius (hidden if no home location).
-5. **Settings** — home location (city search via `MKLocalSearch`, or "Use my current location"), radius (25 / 50 / 100 / 250 miles, default 50), notifications toggle, sign out, delete account (with confirmation).
+1. **Welcome / Login / Register / Forgot password** — starter kit pages. Unverified users are redirected to the verify-email notice.
+2. **Search** — text input, 300 ms debounce, minimum 2 characters; results show image, name, and Follow button.
+3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed; "Get tickets" opens `ticket_url` in a new tab). Follow/Unfollow button. Alert scope toggle (`Everywhere` / `Near me`), shown only when following. Viewing updates the follow's `last_seen_at`.
+4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any event's `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's radius (hidden if no home location).
+5. **Settings**
+   - Home location: type a city (Nominatim lookup) or "Use my current location" (Geolocation API).
+   - Radius: 25 / 50 / 100 / 250 miles (default 50).
+   - Alert channels: Email on/off; "Push on this device" on/off (requests browser permission, stores/removes this device's subscription).
+   - Sign out; Delete account (confirmation step; removes user, follows, push subscriptions).
 
-Empty states: My Artists with no follows shows a prompt linking to Search; Artist Detail with no events shows "No upcoming dates — we'll alert you when they're announced."
+**Install banner:** on iOS Safari when not running standalone (`navigator.standalone !== true`), show a dismissible banner: "Add GigRadar to your Home Screen for instant alerts" with Share → Add to Home Screen instructions. Dismissal remembered in `localStorage`. On iOS, the push toggle is shown only when running standalone (iOS only supports web push for Home-Screen apps).
+
+**Empty states:** My Artists with no follows → prompt linking to Search. Artist with no events → "No upcoming dates — we'll alert you when they're announced."
 
 ### Out of scope for v1
-Spotify/Apple Music import, Android, on-sale/presale reminders, sharing, calendar view, multiple data sources, alerts on cancellations/postponements.
+SMS, Google/Apple sign-in, Spotify/Apple Music import, native app store builds, on-sale/presale reminders, sharing, calendar view, multiple data sources, alerts on cancellations/postponements.
 
-## 5. Data model (Firestore)
+## 5. Data model (MySQL)
 
 ```
-users/{uid}
-  email: string
-  displayName: string | null
-  createdAt: timestamp
-  homeLocation: { name: string, lat: number, lng: number } | null
-  radiusMiles: number            // 25 | 50 | 100 | 250, default 50
-  notificationsEnabled: boolean  // default true
-  fcmTokens: string[]            // one per signed-in device
+users
+  id, name, email (unique), password, email_verified_at, remember_token, timestamps
+  home_location_name  varchar null
+  home_lat            decimal(10,7) null
+  home_lng            decimal(10,7) null
+  radius_miles        smallint unsigned default 50   -- 25 | 50 | 100 | 250
+  notify_email        boolean default true
+  notify_push         boolean default true
 
-users/{uid}/follows/{artistId}
-  artistId: string               // duplicated from doc ID for collection-group queries
-  artistName: string             // denormalised
-  imageUrl: string | null        // denormalised
-  alertScope: "everywhere" | "nearby"   // default "everywhere"
-  followedAt: timestamp
-  lastSeenAt: timestamp
+artists
+  id, ticketmaster_id varchar unique, name, image_url null,
+  seeded boolean default false, last_checked_at timestamp null, timestamps
 
-artists/{artistId}               // artistId = Ticketmaster attractionId
-  name: string
-  imageUrl: string | null
-  followerCount: number
-  lastCheckedAt: timestamp | null
-  seeded: boolean                // true once initial events stored without alerting
+follows
+  id, user_id FK cascade, artist_id FK cascade,
+  alert_scope enum('everywhere','nearby') default 'everywhere',
+  last_seen_at timestamp, timestamps
+  unique(user_id, artist_id)
 
-artists/{artistId}/events/{eventId}   // eventId = Ticketmaster event id
-  name: string
-  date: timestamp                // local start date/time converted to UTC
-  venueName: string
-  city: string
-  country: string
-  lat: number | null
-  lng: number | null
-  ticketUrl: string
-  status: "onsale" | "offsale" | "cancelled" | "postponed" | "rescheduled"
-  firstSeenAt: timestamp
+events
+  id, artist_id FK cascade, ticketmaster_id varchar unique, name,
+  starts_at datetime (UTC), venue_name, city, country,
+  lat decimal(10,7) null, lng decimal(10,7) null, ticket_url,
+  status enum('onsale','offsale','cancelled','postponed','rescheduled'),
+  first_seen_at timestamp, timestamps
+  index(artist_id, starts_at)
+
+push_subscriptions   -- migration published by laravel-notification-channels/webpush
 ```
 
-### Security rules
-- `users/{uid}` and `users/{uid}/follows/**`: read/write only when `request.auth.uid == uid`. Clients cannot write `fcmTokens` of other users.
-- `artists/**`: read for any signed-in user; no client writes (only Cloud Functions, via the Admin SDK).
-- Everything else denied.
+**Relationships:** `User belongsToMany Artist` via `follows` (pivot model `Follow` with `alert_scope`, `last_seen_at`); `Artist belongsToMany User` as `followers`; `Artist hasMany Event`; `User` uses `HasPushSubscriptions`.
 
-### Indexes
-- Collection-group index on `follows.artistId` supports "all followers of artist X" (document IDs can't be filtered in collection-group queries, hence the duplicated field).
+**Authorisation:** all app routes require `auth` + `verified`. Follows and settings are always scoped to `auth()->user()`; there are no routes taking another user's ID. Artists and events are readable by any verified user.
 
-## 6. Cloud Functions
+## 6. Backend components
 
-### `searchArtists(query: string)` — callable, auth required
-Calls Ticketmaster `attractions.json?keyword=…&classificationName=music&size=20`. Returns `[{ id, name, imageUrl }]`. Results cached in memory for 10 minutes per normalised query to absorb debounce-adjacent duplicates.
+| Class | Responsibility | Depends on |
+|---|---|---|
+| `App\Services\Ticketmaster\TicketmasterClient` | Only class aware of Ticketmaster. `searchAttractions(string)`, `upcomingEvents(string $attractionId)`. Maps JSON to DTOs (`ArtistData`, `EventData`). Throttles to ≤ 4 req/sec. | `Http` facade, config |
+| `App\Services\ArtistSync` | `syncEvents(Artist): Collection<Event> $new` — fetches events, upserts, sets `first_seen_at` on unseen IDs, updates changed fields, sets `last_checked_at`. | `TicketmasterClient` |
+| `App\Support\EventDiffer` | Pure: given stored IDs and fetched DTOs, returns new / updated sets. | — |
+| `App\Support\Geo` | Pure: `distanceMiles(lat1, lng1, lat2, lng2)` (haversine). | — |
+| `App\Support\RecipientSelector` | Pure: given new events and followers (with pivot + location), returns `user → events` to alert. | `Geo` |
+| `App\Notifications\NewTourDates` | Queued. `via()` returns enabled channels (`mail` if `notify_email`; `WebPushChannel` if `notify_push` and user has subscriptions). Builds message. | — |
+| `App\Console\Commands\CheckDates` | `gigradar:check-dates` orchestration (§7). | `ArtistSync`, `RecipientSelector` |
+| `App\Services\Geocoder` | Nominatim lookup for typed city, cached 30 days, with app User-Agent. | `Http`, cache |
 
-### `getArtistEvents(artistId: string)` — callable, auth required
-- If `artists/{artistId}` exists and `lastCheckedAt` is within 6 hours, return stored events.
-- Otherwise fetch `events.json?attractionId=…&classificationName=music&sort=date,asc&size=200`, upsert the artist doc and events, set `seeded = true`, and return events. **No alerts are sent from this function.**
+### Controllers / routes
+- `GET /search?q=` — Inertia page; results via `TicketmasterClient::searchAttractions`, cached 10 min per normalised query.
+- `GET /artists/{ticketmasterId}` — upserts the artist; if `last_checked_at` older than 6 hours or null, calls `ArtistSync::syncEvents` and marks `seeded = true` **without alerting**; renders events; updates `last_seen_at` if followed.
+- `POST /artists/{ticketmasterId}/follow`, `DELETE …/follow`, `PATCH …/follow` (alert_scope).
+- `GET /dashboard` — My Artists.
+- `GET/PATCH /settings`, `DELETE /settings/account`.
+- `POST /push-subscriptions`, `DELETE /push-subscriptions` — store/remove the current device's subscription.
 
-### `onFollowWrite` — Firestore trigger on `users/{uid}/follows/{artistId}`
-Create → increment `artists/{artistId}.followerCount` (creating the artist doc if missing). Delete → decrement.
+## 7. Alert flow — `gigradar:check-dates`
 
-### `checkNewDates` — scheduled, every 6 hours (Europe/London)
-1. Query `artists` where `followerCount > 0`.
-2. For each artist (throttled to ≤ 4 req/sec), fetch upcoming events from Ticketmaster.
-3. Diff returned event IDs against stored events. Unseen IDs are **new**: store with `firstSeenAt = now`. Update fields (status, date, etc.) on existing events.
-4. If the artist was not yet `seeded`, set `seeded = true` and send no alerts.
-5. Otherwise, for new events with status not `cancelled`, query followers (`follows` collection group where `artistId == X`) and select recipients per follow:
+Scheduled `everySixHours()`, `withoutOverlapping()`, timezone Europe/London.
+
+1. `Artist::has('followers')->cursor()`.
+2. For each artist: `ArtistSync::syncEvents($artist)` → `$new`.
+3. If the artist was not `seeded`: set `seeded = true`, send nothing.
+4. Otherwise filter `$new` to status ≠ `cancelled`; if empty, continue.
+5. Load followers with pivot and location. `RecipientSelector`:
    - `everywhere` → alert.
-   - `nearby` → alert if haversine distance (venue, user `homeLocation`) ≤ `radiusMiles`; if user has no `homeLocation` or event has no coordinates, alert.
-   - Skip users with `notificationsEnabled == false` or no `fcmTokens`.
-6. Send **one push per artist per user per run**: title = artist name; body = "Announced N new date(s), including {city} – {d MMM}" (earliest qualifying event). Payload includes `artistId` so a tap opens Artist Detail.
-7. Delete events with `date` before today.
-8. Set `lastCheckedAt = now` on success.
+   - `nearby` → alert if `Geo::distanceMiles(venue, home) ≤ radius_miles`; if user has no home location or event has no coordinates, alert.
+6. For each selected user: `$user->notify(new NewTourDates($artist, $eventsForUser))` — **one notification per artist per user per run**.
+   - Subject/title: "{Artist} announced new dates"
+   - Body: "{N} new date(s), including {city} – {d M}" (earliest qualifying event)
+   - Link: `/artists/{ticketmasterId}`
+7. Delete events with `starts_at` before today.
 
-### `onUserDelete` — Auth trigger
-Deletes `users/{uid}` and its `follows` (each delete fires `onFollowWrite`, decrementing counts).
+## 8. Error handling
 
-### Module boundaries (functions/src)
-- `ticketmaster.ts` — the only module aware of Ticketmaster; maps API JSON to internal `Artist`/`Event` types.
-- `alerts.ts` — pure functions: `diffEvents`, `distanceMiles`, `selectRecipients`, `buildMessage`. No I/O.
-- `scheduler.ts` — `checkNewDates` orchestration.
-- `callable.ts` — `searchArtists`, `getArtistEvents`.
-- `triggers.ts` — `onFollowWrite`, `onUserDelete`.
+- **Ticketmaster error / 429 in the command:** log, skip the artist, leave `last_checked_at` unchanged (retried next run). Never abort the run.
+- **Ticketmaster error on a page:** render stored data if any, plus a "Couldn't refresh — showing saved dates" notice; if none, an inline error with Retry.
+- **Expired push subscription** (404/410 from push service): delete it (package `expired` handling).
+- **Email failure:** queued job retries (3 tries, backoff).
+- **Push permission denied:** Settings explains how to re-enable in browser/iOS settings.
+- **Nominatim failure / no match:** inline "Couldn't find that place" message.
+- **Quota:** at 4 runs/day, ~1,000 followed artists ≈ 4,000 calls/day. If exceeded later, check less-followed artists less often (not built in v1).
 
-## 7. Error handling
+## 9. Testing (Pest)
 
-- **Ticketmaster failure / 429 during scheduler:** log, skip that artist, leave `lastCheckedAt` unchanged so it's retried next run. Never abort the whole run.
-- **Ticketmaster failure in callables:** return stored data if any exists, otherwise a `unavailable` error the app shows as "Couldn't load — Retry".
-- **Invalid FCM token** (`messaging/registration-token-not-registered`): remove it from the user's `fcmTokens`.
-- **App network errors:** inline error with Retry on Search, Artist Detail, My Artists.
-- **Push permission denied:** Settings shows a notice with a button opening iOS Settings.
-- **Quota:** at 4 runs/day, ~1,000 followed artists ≈ 4,000 calls/day. If exceeded in future, check artists with fewer followers less frequently (not built in v1).
+- **Unit:** `EventDiffer`, `Geo::distanceMiles`, `RecipientSelector` (scope rules, fallbacks, cancelled excluded), `NewTourDates` message text and channel selection.
+- **Feature:**
+  - `TicketmasterClient` mapping against recorded JSON fixtures via `Http::fake()`.
+  - `gigradar:check-dates` with `Http::fake()` + `Notification::fake()`: unseeded artist sends nothing; new event notifies the right users exactly once per artist; nearby users outside radius not notified.
+  - Viewing an artist seeds events without notifying.
+  - Follow/unfollow/scope endpoints; settings update; account deletion cascades.
+  - Authorisation: guests redirected; unverified users blocked.
+- **Manual:** web push on a physical iPhone as a Home-Screen PWA over HTTPS (local via an `ngrok`/`expose` tunnel, or the deployed site).
 
-## 8. iOS project structure
+## 10. Build order
 
-```
-ios/GigRadar/
-  App/        GigRadarApp.swift, RootView (signed-in vs signed-out), MainTabView
-  Features/   Auth/, Search/, Artist/, MyArtists/, Settings/   (View + ViewModel each)
-  Services/   AuthService, ArtistService, FollowService, UserService, PushService
-              (protocols + Firebase implementations, so ViewModels can be tested with fakes)
-  Models/     Artist, Event, Follow, UserProfile (Codable)
-```
-
-Dependencies via Swift Package Manager: `firebase-ios-sdk` (FirebaseAuth, FirebaseFirestore, FirebaseFunctions, FirebaseMessaging).
-
-## 9. Testing
-
-- **Functions:** Vitest unit tests for `alerts.ts` (new-event diffing, radius maths, recipient selection, one grouped message per artist, seeding produces no alerts). `ticketmaster.ts` mapping tested against recorded JSON fixtures.
-- **Integration:** Firebase Emulator Suite for callables, triggers, and scheduler with Ticketmaster mocked.
-- **Security rules:** `@firebase/rules-unit-testing` against the emulator — users cannot read/write others' data; clients cannot write `artists/**`.
-- **iOS:** Swift Testing unit tests on ViewModels using fake services. Manual end-to-end on a physical iPhone for push.
-
-## 10. Build order & release
-
-1. Backend: Firebase project, functions, rules, emulator, tests.
-2. iOS (free Apple ID is sufficient): email auth → Search → Artist Detail → Follow → My Artists → Settings → delete account.
-3. **Join Apple Developer Program** ($99/yr).
-4. Sign in with Apple, push notifications (APNs key uploaded to Firebase).
-5. TestFlight beta.
-6. App Store submission: privacy policy URL, privacy nutrition label (email, coarse location, device token), screenshots, account deletion in-app.
+1. Laravel Vue starter kit scaffold (`laravel new gigradar --vue`), Pest, migrations, models, factories.
+2. `TicketmasterClient` + Search page.
+3. Artist Detail, `ArtistSync`, follow/unfollow, alert scope.
+4. My Artists (new badges, upcoming near you).
+5. Settings: location (Geocoder + Geolocation), radius, channels, account deletion.
+6. `gigradar:check-dates`, `RecipientSelector`, `NewTourDates` via email.
+7. PWA (manifest, icons, service worker, install banner) + web push.
+8. Deploy: server, domain, HTTPS, queue worker, scheduler cron, Resend domain verification.
 
 ## 11. Prerequisites
 
-- Google account → Firebase project on Blaze plan with budget alert.
-- Ticketmaster developer account → Consumer Key stored via `firebase functions:secrets:set TICKETMASTER_API_KEY`.
-- Xcode (latest), Node 20+, Firebase CLI.
-- Apple Developer Program membership (from step 3 of build order).
-
-## 12. Known constraint: development Mac
-
-Current machine is a 2017 Intel MacBook Pro capped at macOS 13 / Xcode 15.4. Since April 2026 App Store and TestFlight uploads require Xcode 26+ (macOS 15+). Implications:
-- Build-order steps 1–2 (backend, iOS screens in the simulator) can proceed on this Mac.
-- Firebase iOS SDK must be pinned to the latest version supporting Xcode 15.
-- Before step 5 (TestFlight), choose one: newer Apple Silicon Mac (preferred), GitHub Actions macOS runner for builds/uploads, or a rented cloud Mac.
+- `composer self-update` (local Composer is 2.2.6); PHP 8.3, Node 20.19, MySQL 8.4 already installed.
+- Ticketmaster developer account → Consumer Key in `.env`.
+- Resend account + a domain you own (for sending address and the app's HTTPS URL).
+- VAPID keys: `php artisan webpush:vapid`.
+- For on-phone push testing before deploy: `ngrok` or `expose`.
