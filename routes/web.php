@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArtistController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -14,6 +15,9 @@ Route::get('dashboard', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('search', SearchController::class)->name('search');
+    Route::get('artists/{ticketmasterId}', [ArtistController::class, 'show'])
+        ->whereAlphaNumeric('ticketmasterId')
+        ->name('artists.show');
 });
 
 require __DIR__.'/settings.php';
