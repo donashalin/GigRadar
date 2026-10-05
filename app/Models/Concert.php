@@ -12,7 +12,7 @@ class Concert extends Model
 
     protected $fillable = [
         'ticketmaster_id', 'name', 'starts_at', 'venue_name', 'city', 'country',
-        'lat', 'lng', 'ticket_url', 'status', 'first_seen_at',
+        'lat', 'lng', 'ticket_url', 'status', 'first_seen_at', 'alerted_at',
     ];
 
     protected function casts(): array
@@ -20,6 +20,7 @@ class Concert extends Model
         return [
             'starts_at' => 'datetime',
             'first_seen_at' => 'datetime',
+            'alerted_at' => 'datetime',
             'lat' => 'float',
             'lng' => 'float',
         ];

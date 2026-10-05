@@ -24,17 +24,18 @@ class ArtistSync
      */
     public function syncEvents(Artist $artist): Collection
     {
+        $wasSeeded = $artist->seeded;
         $fetched = $this->ticketmaster->upcomingEvents($artist->ticketmaster_id);
         $storedIds = $artist->concerts()->pluck('ticketmaster_id')->all();
         ['new' => $new, 'existing' => $existing] = ConcertDiffer::diff($storedIds, $fetched);
 
-        return DB::transaction(function () use ($artist, $new, $existing) {
+        return DB::transaction(function () use ($artist, $new, $existing, $wasSeeded) {
             $now = now();
 
             $created = collect($new)
                 ->map(fn (ConcertData $c) => $artist->concerts()->createOrFirst(
                     ['ticketmaster_id' => $c->id],
-                    [...$this->attributes($c), 'first_seen_at' => $now],
+                    [...$this->attributes($c), 'first_seen_at' => $now, 'alerted_at' => $wasSeeded ? null : $now],
                 ))
                 ->filter(fn (Concert $c) => $c->wasRecentlyCreated)
                 ->values();

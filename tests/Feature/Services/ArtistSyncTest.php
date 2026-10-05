@@ -73,3 +73,27 @@ it('handles zero events without touching stored concerts', function () {
         ->and($artist->fresh()->seeded)->toBeTrue()
         ->and($artist->fresh()->last_checked_at)->not->toBeNull();
 });
+
+it('marks concerts found while seeding as already alerted', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->unseeded()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+
+    $new = app(ArtistSync::class)->syncEvents($artist);
+
+    expect($new)->toHaveCount(2)
+        ->and($new->every(fn ($c) => $c->alerted_at !== null))->toBeTrue()
+        ->and($artist->concerts()->whereNull('alerted_at')->count())->toBe(0);
+});
+
+it('leaves new concerts pending alert for a seeded artist and never touches existing alerted_at', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+    $existing = Concert::factory()->for($artist)->create(['ticketmaster_id' => 'G5vYZ9abc002', 'alerted_at' => null]);
+
+    $new = app(ArtistSync::class)->syncEvents($artist);
+
+    expect($new)->toHaveCount(1)
+        ->and($new->first()->alerted_at)->toBeNull()
+        ->and($artist->concerts()->where('ticketmaster_id', 'G5vYZ9abc001')->first()->alerted_at)->toBeNull()
+        ->and($existing->fresh()->alerted_at)->toBeNull();
+});

@@ -23,6 +23,7 @@ class ConcertFactory extends Factory
             'ticket_url' => 'https://www.ticketmaster.co.uk/event/example',
             'status' => 'onsale',
             'first_seen_at' => now(),
+            'alerted_at' => now(),
         ];
     }
 }
