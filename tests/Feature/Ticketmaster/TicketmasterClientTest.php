@@ -4,6 +4,7 @@ use App\Services\Ticketmaster\ArtistData;
 use App\Services\Ticketmaster\ConcertData;
 use App\Services\Ticketmaster\TicketmasterClient;
 use App\Services\Ticketmaster\TicketmasterException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -81,3 +82,38 @@ it('throws when Ticketmaster is unreachable', function () {
 
     app(TicketmasterClient::class)->searchAttractions('x');
 })->throws(TicketmasterException::class);
+
+it('does not leak the API key when the connection fails', function () {
+    Http::fake(['app.ticketmaster.com/*' => fn () => throw new ConnectionException('cURL error 28 for https://app.ticketmaster.com/discovery/v2/attractions.json?keyword=x&apikey=test-key')]);
+
+    try {
+        app(TicketmasterClient::class)->searchAttractions('x');
+        $this->fail('Expected TicketmasterException');
+    } catch (TicketmasterException $e) {
+        expect($e->getMessage())->not->toContain('test-key')
+            ->and($e->getPrevious())->toBeNull()
+            ->and($e->getCode())->toBe(0);
+    }
+});
+
+it('throws a 502 when the body is not JSON', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response('<html>oops</html>', 200)]);
+
+    try {
+        app(TicketmasterClient::class)->searchAttractions('x');
+        $this->fail('Expected TicketmasterException');
+    } catch (TicketmasterException $e) {
+        expect($e->getCode())->toBe(502);
+    }
+});
+
+it('throws a 502 when an attraction is missing its id or name', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['foo' => 'bar'])]);
+
+    try {
+        app(TicketmasterClient::class)->attraction('x');
+        $this->fail('Expected TicketmasterException');
+    } catch (TicketmasterException $e) {
+        expect($e->getCode())->toBe(502);
+    }
+});

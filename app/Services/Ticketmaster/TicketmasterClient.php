@@ -61,16 +61,27 @@ class TicketmasterClient
                 ->timeout(10)
                 ->get($path, [...$query, 'apikey' => $this->apiKey]);
         } catch (ConnectionException $e) {
-            throw new TicketmasterException('Ticketmaster unreachable: '.$e->getMessage(), 0, $e);
+            // The original message contains the request URL, including the API key, so redact it
+            // and deliberately do not chain the original exception.
+            $message = $this->apiKey === '' ? $e->getMessage() : str_replace($this->apiKey, '[redacted]', $e->getMessage());
+
+            throw new TicketmasterException('Ticketmaster unreachable: '.$message, 0);
         }
 
         if ($response->failed()) {
             throw new TicketmasterException("Ticketmaster {$path} failed with HTTP {$response->status()}", $response->status());
         }
 
-        return $response->json() ?? [];
+        $json = $response->json();
+
+        if (! is_array($json)) {
+            throw new TicketmasterException("Ticketmaster {$path} returned an invalid response", 502);
+        }
+
+        return $json;
     }
 
+    /** Per-process only: fine for the single check-dates process, not a cross-process rate limit. */
     private function throttle(): void
     {
         if ($this->throttleMs <= 0) {
@@ -89,6 +100,10 @@ class TicketmasterClient
 
     private function toArtist(array $attraction): ArtistData
     {
+        if (! isset($attraction['id'], $attraction['name'])) {
+            throw new TicketmasterException('Ticketmaster returned an attraction without an id or name', 502);
+        }
+
         $images = collect($attraction['images'] ?? []);
         $image = $images->where('ratio', '16_9')->sortByDesc('width')->first() ?? $images->first();
 
@@ -100,6 +115,7 @@ class TicketmasterClient
         $start = $event['dates']['start'] ?? [];
         $startsAt = match (true) {
             isset($start['dateTime']) => CarbonImmutable::parse($start['dateTime'])->utc(),
+            // Date-only event: stored as UTC midnight, so don't treat it as a real start time.
             isset($start['localDate']) => CarbonImmutable::parse($start['localDate'], 'UTC'),
             default => null,
         };
@@ -110,6 +126,7 @@ class TicketmasterClient
 
         $venue = $event['_embedded']['venues'][0] ?? [];
         $status = $event['dates']['status']['code'] ?? 'onsale';
+        $status = $status === 'canceled' ? 'cancelled' : $status; // Ticketmaster uses the US spelling
 
         return new ConcertData(
             id: $event['id'],

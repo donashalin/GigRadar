@@ -24,7 +24,7 @@
         "url": "https://www.ticketmaster.co.uk/event/002",
         "dates": {
           "start": { "localDate": "2027-04-02" },
-          "status": { "code": "cancelled" }
+          "status": { "code": "canceled" }
         },
         "_embedded": {
           "venues": [{ "name": "Olympia", "city": { "name": "Dublin" }, "country": { "countryCode": "IE" } }]
