@@ -25,12 +25,13 @@ watch(query, (value) => {
     const next = value.trim().length >= 2 ? value.trim() : '';
     if (next === lastSent) return;
     timer = setTimeout(() => {
+        lastSent = next;
         router.get('/search', next ? { q: next } : {}, {
             preserveState: true,
             replace: true,
             only: ['q', 'results', 'error', 'flash'],
-            onSuccess: () => {
-                lastSent = next;
+            onCancel: () => {
+                lastSent = props.q;
             },
         });
     }, 300);
