@@ -170,3 +170,15 @@ it('skips malformed attractions in search results instead of failing', function 
 
     expect($results)->toHaveCount(1)->and($results[0]->id)->toBe('A1');
 });
+
+it('skips events missing an id or name', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [
+        ['id' => 'E1', 'name' => 'Good', 'dates' => ['start' => ['localDate' => '2027-01-01']]],
+        ['name' => 'No id', 'dates' => ['start' => ['localDate' => '2027-01-01']]],
+        ['id' => 'E3', 'dates' => ['start' => ['localDate' => '2027-01-01']]],
+    ]]])]);
+
+    $concerts = app(TicketmasterClient::class)->upcomingEvents('A1');
+
+    expect($concerts)->toHaveCount(1)->and($concerts[0]->id)->toBe('E1');
+});

@@ -121,6 +121,10 @@ class TicketmasterClient
 
     private function toConcert(array $event): ?ConcertData
     {
+        if (! isset($event['id'], $event['name'])) {
+            return null;
+        }
+
         $start = $event['dates']['start'] ?? [];
         $startsAt = match (true) {
             isset($start['dateTime']) => CarbonImmutable::parse($start['dateTime'])->utc(),

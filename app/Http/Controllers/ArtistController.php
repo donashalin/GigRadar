@@ -37,7 +37,9 @@ class ArtistController extends Controller
         }
 
         $concerts = $artist->concerts()
-            ->where('starts_at', '>=', now()->startOfDay())
+            ->where(fn ($q) => $q->where('local_date', '>=', today()->toDateString())
+                ->orWhere(fn ($q) => $q->whereNull('local_date')->where('starts_at', '>=', now()->startOfDay())))
+            ->orderByRaw('COALESCE(local_date, DATE(starts_at))')
             ->orderBy('starts_at')
             ->get();
 

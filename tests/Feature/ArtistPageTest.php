@@ -38,7 +38,7 @@ it('does not call Ticketmaster when the artist was checked recently', function (
 it('hides past concerts', function () {
     Http::fake();
     $artist = Artist::factory()->create();
-    Concert::factory()->for($artist)->create(['starts_at' => now()->subDay()]);
+    Concert::factory()->for($artist)->create(['starts_at' => now()->subDay(), 'local_date' => today()->subDay()->toDateString()]);
     Concert::factory()->for($artist)->create(['starts_at' => now()->addDay()]);
 
     $this->actingAs(User::factory()->create())->get("/artists/{$artist->ticketmaster_id}")
@@ -77,4 +77,38 @@ it('marks the artist as seen for a follower', function () {
         ->assertInertia(fn (Assert $page) => $page->where('following', true)->where('alertScope', 'nearby'));
 
     expect($user->artists()->first()->pivot->last_seen_at->gt(now()->subMinute()))->toBeTrue();
+});
+
+it('reports a failed refresh with no concerts to show', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response([], 500)]);
+    $artist = Artist::factory()->create(['last_checked_at' => now()->subDay()]);
+
+    $this->actingAs(User::factory()->create())->get("/artists/{$artist->ticketmaster_id}")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('refreshFailed', true)->has('concerts', 0));
+});
+
+it('filters upcoming concerts by the venue-local day', function () {
+    Http::fake();
+    $artist = Artist::factory()->create();
+    Concert::factory()->for($artist)->create([
+        'name' => 'Yesterday local',
+        'starts_at' => now()->startOfDay()->addHour(),
+        'local_date' => today()->subDay()->toDateString(),
+    ]);
+    Concert::factory()->for($artist)->create([
+        'name' => 'Today local',
+        'starts_at' => now()->subHours(3),
+        'local_date' => today()->toDateString(),
+    ]);
+    Concert::factory()->for($artist)->create([
+        'name' => 'No local date',
+        'starts_at' => now()->addDays(3),
+        'local_date' => null,
+    ]);
+
+    $this->actingAs(User::factory()->create())->get("/artists/{$artist->ticketmaster_id}")
+        ->assertInertia(fn (Assert $page) => $page->has('concerts', 2)
+            ->where('concerts.0.name', 'Today local')
+            ->where('concerts.1.name', 'No local date'));
 });
