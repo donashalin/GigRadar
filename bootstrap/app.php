@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Tailscale Serve (and later a reverse proxy) terminates HTTPS locally.
+        $middleware->trustProxies(at: '127.0.0.1');
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
