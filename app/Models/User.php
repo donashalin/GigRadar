@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -43,6 +44,19 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'home_lat' => 'float',
+            'home_lng' => 'float',
+            'radius_miles' => 'integer',
+            'notify_email' => 'boolean',
+            'notify_push' => 'boolean',
         ];
+    }
+
+    public function artists(): BelongsToMany
+    {
+        return $this->belongsToMany(Artist::class, 'follows')
+            ->using(Follow::class)
+            ->withPivot(['alert_scope', 'last_seen_at'])
+            ->withTimestamps();
     }
 }
