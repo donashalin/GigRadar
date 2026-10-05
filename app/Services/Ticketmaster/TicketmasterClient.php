@@ -114,7 +114,7 @@ class TicketmasterClient
         $images = collect($attraction['images'] ?? []);
         $image = $images->where('ratio', '16_9')->sortByDesc('width')->first() ?? $images->first();
 
-        return new ArtistData($attraction['id'], $attraction['name'], $image['url'] ?? null);
+        return new ArtistData($attraction['id'], $attraction['name'], $this->safeUrl($image['url'] ?? null));
     }
 
     private function toConcert(array $event): ?ConcertData
@@ -144,8 +144,14 @@ class TicketmasterClient
             country: $venue['country']['countryCode'] ?? '',
             lat: isset($venue['location']['latitude']) ? (float) $venue['location']['latitude'] : null,
             lng: isset($venue['location']['longitude']) ? (float) $venue['location']['longitude'] : null,
-            ticketUrl: $event['url'] ?? '',
+            ticketUrl: $this->safeUrl($event['url'] ?? null) ?? '',
             status: in_array($status, self::STATUSES, true) ? $status : 'onsale',
         );
+    }
+
+    /** Only http(s) URLs are trusted; anything else (e.g. javascript:) is dropped. */
+    private function safeUrl(mixed $url): ?string
+    {
+        return is_string($url) && preg_match('#^https?://#i', $url) === 1 ? $url : null;
     }
 }

@@ -124,7 +124,7 @@ function formatDate(iso: string): string {
                         v-if="concert.ticketUrl && concert.status !== 'cancelled'"
                         :href="concert.ticketUrl"
                         target="_blank"
-                        rel="noopener"
+                        rel="noopener noreferrer"
                         class="inline-flex min-h-11 shrink-0 items-center rounded-full border border-violet-600 px-4 py-1.5 text-sm font-medium text-violet-600"
                     >
                         Tickets

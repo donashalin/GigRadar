@@ -131,3 +131,20 @@ it('throws a 502 when an attraction is missing its id or name', function () {
         expect($e->getCode())->toBe(502);
     }
 });
+
+it('drops non-http(s) ticket and image URLs', function () {
+    Http::fake([
+        'app.ticketmaster.com/discovery/v2/events.json*' => Http::response(['_embedded' => ['events' => [[
+            'id' => 'E1', 'name' => 'Gig', 'url' => 'javascript:alert(1)',
+            'dates' => ['start' => ['localDate' => '2027-01-01']],
+        ]]]]),
+        'app.ticketmaster.com/discovery/v2/attractions/A1.json*' => Http::response([
+            'id' => 'A1', 'name' => 'Band', 'images' => [['url' => 'javascript:alert(1)', 'ratio' => '16_9', 'width' => 100]],
+        ]),
+    ]);
+
+    $client = app(TicketmasterClient::class);
+
+    expect($client->upcomingEvents('A1')[0]->ticketUrl)->toBe('')
+        ->and($client->attraction('A1')->imageUrl)->toBeNull();
+});
