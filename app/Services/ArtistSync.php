@@ -18,13 +18,16 @@ class ArtistSync
      * Fetch the artist's upcoming concerts and store them.
      * Sets seeded = true and last_checked_at = now on success.
      *
-     * @return Collection<int, Concert> concerts not seen before this call
+     * @return Collection<int, Concert> concerts first stored by this call. Concerts found while
+     *                                  seeding are already stamped alerted_at, so callers must drive
+     *                                  alerts from `alerted_at IS NULL` on seeded artists, NOT from
+     *                                  this return value.
      *
      * @throws \App\Services\Ticketmaster\TicketmasterException
      */
     public function syncEvents(Artist $artist): Collection
     {
-        $wasSeeded = $artist->seeded;
+        $wasSeeded = (bool) $artist->newQuery()->whereKey($artist->getKey())->value('seeded');
         $fetched = $this->ticketmaster->upcomingEvents($artist->ticketmaster_id);
         $storedIds = $artist->concerts()->pluck('ticketmaster_id')->all();
         ['new' => $new, 'existing' => $existing] = ConcertDiffer::diff($storedIds, $fetched);

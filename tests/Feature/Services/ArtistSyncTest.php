@@ -97,3 +97,27 @@ it('leaves new concerts pending alert for a seeded artist and never touches exis
         ->and($artist->concerts()->where('ticketmaster_id', 'G5vYZ9abc001')->first()->alerted_at)->toBeNull()
         ->and($existing->fresh()->alerted_at)->toBeNull();
 });
+
+it('reads seeded state from the database, not a stale in-memory model', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->unseeded()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+    $stale = Artist::find($artist->id);
+    Artist::whereKey($artist->id)->update(['seeded' => true]);
+
+    expect($stale->seeded)->toBeFalse();
+    $new = app(ArtistSync::class)->syncEvents($stale);
+
+    expect($new)->toHaveCount(2)
+        ->and($new->every(fn ($c) => $c->alerted_at === null))->toBeTrue();
+});
+
+it('does not change an existing non-null alerted_at', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+    $alertedAt = now()->subDays(3)->startOfSecond();
+    $existing = Concert::factory()->for($artist)->create(['ticketmaster_id' => 'G5vYZ9abc002', 'alerted_at' => $alertedAt]);
+
+    app(ArtistSync::class)->syncEvents($artist);
+
+    expect($existing->fresh()->alerted_at->equalTo($alertedAt))->toBeTrue();
+});
