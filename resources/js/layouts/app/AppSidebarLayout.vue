@@ -17,7 +17,8 @@ withDefaults(defineProps<Props>(), {
 <template>
     <AppShell variant="sidebar">
         <AppSidebar />
-        <AppContent variant="sidebar">
+        <!-- min-w-0 lets long truncated text shrink instead of widening the page past the viewport -->
+        <AppContent variant="sidebar" class="min-w-0">
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />
             <slot />
         </AppContent>
