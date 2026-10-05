@@ -95,7 +95,9 @@ concerts                -- model Concert (avoids clashing with Laravel's Event f
   starts_at datetime (UTC), venue_name, city, country,
   lat decimal(10,7) null, lng decimal(10,7) null, ticket_url,
   status enum('onsale','offsale','cancelled','postponed','rescheduled'),
-  first_seen_at timestamp, timestamps
+  first_seen_at timestamp
+  alerted_at timestamp null       -- null = followers not yet alerted; set on seeding and after alerting
+  timestamps
   unique(artist_id, ticketmaster_id)   -- one Ticketmaster event can list several artists
   index(artist_id, starts_at)
 
@@ -132,18 +134,20 @@ push_subscriptions   -- migration published by laravel-notification-channels/web
 
 Scheduled `everySixHours()`, `withoutOverlapping()`, timezone Europe/London.
 
+Alerts are driven by `concerts.alerted_at`, not by which sync first saw a concert. This means a page view or follow that syncs an artist can never "use up" an alert.
+
 1. `Artist::has('followers')->cursor()`.
-2. For each artist: `ArtistSync::syncEvents($artist)` → `$new`.
-3. If the artist was not `seeded`: set `seeded = true`, send nothing.
-4. Otherwise filter `$new` to status ≠ `cancelled`; if empty, continue.
-5. Load followers with pivot and location. `RecipientSelector`:
+2. For each artist: `ArtistSync::syncEvents($artist)`. Any sync (scheduler, page view, follow) stores unseen concerts; if the artist was **not yet seeded**, those concerts are stamped `alerted_at = now` (existing dates never alert); otherwise they are stored with `alerted_at = null` (pending alert). On a Ticketmaster error, log and skip the artist (§8); catch any `Throwable` per artist so one failure never aborts the run.
+3. Pending concerts for the artist = `seeded` artist's concerts with `alerted_at IS NULL`. Stamp pending concerts whose status is `cancelled` as alerted without notifying. If none remain, continue.
+4. Load followers with pivot and location. `RecipientSelector`:
    - `everywhere` → alert.
    - `nearby` → alert if `Geo::distanceMiles(venue, home) ≤ radius_miles`; if user has no home location or event has no coordinates, alert.
-6. For each selected user: `$user->notify(new NewTourDates($artist, $eventsForUser))` — **one notification per artist per user per run**.
+5. For each selected user: `$user->notify(new NewTourDates($artist, $concertsForUser))` — **one notification per artist per user per run**.
    - Subject/title: "{Artist} announced new dates"
-   - Body: "{N} new date(s), including {city} – {d M}" (earliest qualifying event)
+   - Body: "{N} new date(s), including {city} – {d M}" (earliest qualifying concert)
    - Link: `/artists/{ticketmasterId}`
-7. Delete events with `starts_at` before today.
+6. Stamp all pending concerts for the artist `alerted_at = now` (whether or not anyone was in range).
+7. Delete concerts with `starts_at` before today.
 
 ## 8. Error handling
 
