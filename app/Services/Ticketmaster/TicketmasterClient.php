@@ -29,7 +29,9 @@ class TicketmasterClient
             'size' => 20,
         ]);
 
-        $artists = array_map($this->toArtist(...), $json['_embedded']['attractions'] ?? []);
+        // One malformed attraction shouldn't fail the whole search, so skip it.
+        $valid = array_filter($json['_embedded']['attractions'] ?? [], fn ($a) => is_array($a) && isset($a['id'], $a['name']));
+        $artists = array_values(array_map($this->toArtist(...), $valid));
 
         // Exact name matches first; usort is stable (PHP 8+) so Ticketmaster's order is otherwise kept.
         $needle = mb_strtolower(trim($keyword));

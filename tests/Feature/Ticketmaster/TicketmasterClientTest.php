@@ -158,3 +158,15 @@ it('falls back to the UTC date when an event has a dateTime but no localDate', f
 
     expect(app(TicketmasterClient::class)->upcomingEvents('A1')[0]->localDate)->toBe('2027-05-01');
 });
+
+it('skips malformed attractions in search results instead of failing', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['attractions' => [
+        ['id' => 'A1', 'name' => 'Good'],
+        ['name' => 'No id'],
+        ['id' => 'A3'],
+    ]]])]);
+
+    $results = app(TicketmasterClient::class)->searchAttractions('good');
+
+    expect($results)->toHaveCount(1)->and($results[0]->id)->toBe('A1');
+});

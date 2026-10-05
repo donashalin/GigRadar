@@ -18,12 +18,15 @@ const query = ref(props.q);
 const input = ref<HTMLInputElement | null>(null);
 const pendingId = ref<string | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
+let lastSent = props.q;
 
 watch(query, (value) => {
     clearTimeout(timer);
-    if (value.trim() === props.q) return;
+    const next = value.trim().length >= 2 ? value.trim() : '';
+    if (next === lastSent) return;
     timer = setTimeout(() => {
-        router.get('/search', value.trim().length >= 2 ? { q: value.trim() } : {}, {
+        lastSent = next;
+        router.get('/search', next ? { q: next } : {}, {
             preserveState: true,
             replace: true,
             only: ['q', 'results', 'error'],
