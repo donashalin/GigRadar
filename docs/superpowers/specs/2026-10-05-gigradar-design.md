@@ -181,3 +181,10 @@ Dependencies via Swift Package Manager: `firebase-ios-sdk` (FirebaseAuth, Fireba
 - Ticketmaster developer account → Consumer Key stored via `firebase functions:secrets:set TICKETMASTER_API_KEY`.
 - Xcode (latest), Node 20+, Firebase CLI.
 - Apple Developer Program membership (from step 3 of build order).
+
+## 12. Known constraint: development Mac
+
+Current machine is a 2017 Intel MacBook Pro capped at macOS 13 / Xcode 15.4. Since April 2026 App Store and TestFlight uploads require Xcode 26+ (macOS 15+). Implications:
+- Build-order steps 1–2 (backend, iOS screens in the simulator) can proceed on this Mac.
+- Firebase iOS SDK must be pinned to the latest version supporting Xcode 15.
+- Before step 5 (TestFlight), choose one: newer Apple Silicon Mac (preferred), GitHub Actions macOS runner for builds/uploads, or a rented cloud Mac.
