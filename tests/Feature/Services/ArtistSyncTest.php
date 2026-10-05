@@ -50,3 +50,26 @@ it('leaves last_checked_at untouched when Ticketmaster fails', function () {
     expect($artist->fresh()->last_checked_at)->toBeNull()
         ->and($artist->fresh()->seeded)->toBeFalse();
 });
+
+it('is idempotent when synced twice', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->unseeded()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+
+    app(ArtistSync::class)->syncEvents($artist);
+    $second = app(ArtistSync::class)->syncEvents($artist->fresh());
+
+    expect($second)->toBeEmpty()->and($artist->concerts()->count())->toBe(2);
+});
+
+it('handles zero events without touching stored concerts', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('empty'))]);
+    $artist = Artist::factory()->unseeded()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+    Concert::factory()->for($artist)->create();
+
+    $new = app(ArtistSync::class)->syncEvents($artist);
+
+    expect($new)->toBeEmpty()
+        ->and($artist->concerts()->count())->toBe(1)
+        ->and($artist->fresh()->seeded)->toBeTrue()
+        ->and($artist->fresh()->last_checked_at)->not->toBeNull();
+});

@@ -31,11 +31,13 @@ class ArtistSync
         return DB::transaction(function () use ($artist, $new, $existing) {
             $now = now();
 
-            $created = collect($new)->map(fn (ConcertData $c) => $artist->concerts()->create([
-                ...$this->attributes($c),
-                'ticketmaster_id' => $c->id,
-                'first_seen_at' => $now,
-            ]));
+            $created = collect($new)
+                ->map(fn (ConcertData $c) => $artist->concerts()->createOrFirst(
+                    ['ticketmaster_id' => $c->id],
+                    [...$this->attributes($c), 'first_seen_at' => $now],
+                ))
+                ->filter(fn (Concert $c) => $c->wasRecentlyCreated)
+                ->values();
 
             foreach ($existing as $c) {
                 $artist->concerts()->where('ticketmaster_id', $c->id)->update($this->attributes($c));

@@ -19,9 +19,9 @@ class ArtistResolver
 
         $data = $this->ticketmaster->attraction($ticketmasterId);
 
-        return Artist::firstOrCreate(
-            ['ticketmaster_id' => $data->id],
-            ['name' => $data->name, 'image_url' => $data->imageUrl, 'seeded' => false],
+        return Artist::createOrFirst(
+            ['ticketmaster_id' => $ticketmasterId],
+            ['name' => $data->name, 'image_url' => $data->imageUrl],
         );
     }
 }

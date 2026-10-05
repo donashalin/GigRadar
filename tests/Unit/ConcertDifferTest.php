@@ -25,3 +25,11 @@ it('treats everything as new when nothing is stored', function () {
 it('returns nothing when nothing is fetched', function () {
     expect(ConcertDiffer::diff(['a'], []))->toBe(['new' => [], 'existing' => []]);
 });
+
+it('keeps only the first occurrence of a repeated fetched id', function () {
+    $first = concertData('c');
+    $result = ConcertDiffer::diff(['b'], [$first, concertData('c'), concertData('b'), concertData('b')]);
+
+    expect($result['new'])->toHaveCount(1)->and($result['new'][0])->toBe($first)
+        ->and($result['existing'])->toHaveCount(1);
+});

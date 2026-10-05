@@ -11,6 +11,8 @@ class Artist extends Model
 {
     use HasFactory;
 
+    protected $attributes = ['seeded' => false];
+
     protected $fillable = ['ticketmaster_id', 'name', 'image_url', 'seeded', 'last_checked_at'];
 
     protected function casts(): array

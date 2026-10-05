@@ -15,8 +15,14 @@ final class ConcertDiffer
     {
         $stored = array_flip($storedIds);
         $result = ['new' => [], 'existing' => []];
+        $seen = [];
 
         foreach ($fetched as $concert) {
+            if (isset($seen[$concert->id])) {
+                continue;
+            }
+            $seen[$concert->id] = true;
+
             $result[isset($stored[$concert->id]) ? 'existing' : 'new'][] = $concert;
         }
 
