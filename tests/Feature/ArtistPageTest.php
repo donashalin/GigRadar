@@ -17,6 +17,7 @@ it('resolves and seeds an unknown artist on first view', function () {
             ->where('artist.name', 'Fontaines D.C.')
             ->has('concerts', 2)
             ->where('concerts.0.city', 'Manchester')
+            ->where('concerts.0.localDate', '2027-03-14')
             ->where('following', false)
             ->where('alertScope', null)
             ->where('refreshFailed', false));

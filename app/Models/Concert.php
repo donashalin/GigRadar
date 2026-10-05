@@ -11,7 +11,7 @@ class Concert extends Model
     use HasFactory;
 
     protected $fillable = [
-        'ticketmaster_id', 'name', 'starts_at', 'venue_name', 'city', 'country',
+        'ticketmaster_id', 'name', 'starts_at', 'local_date', 'venue_name', 'city', 'country',
         'lat', 'lng', 'ticket_url', 'status', 'first_seen_at', 'alerted_at',
     ];
 
@@ -19,6 +19,7 @@ class Concert extends Model
     {
         return [
             'starts_at' => 'datetime',
+            'local_date' => 'date:Y-m-d',
             'first_seen_at' => 'datetime',
             'alerted_at' => 'datetime',
             'lat' => 'float',

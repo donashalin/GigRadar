@@ -15,6 +15,7 @@ class ConcertFactory extends Factory
             'ticketmaster_id' => 'vv'.fake()->unique()->bothify('??##########'),
             'name' => fake()->words(3, true),
             'starts_at' => now()->addMonths(2),
+            'local_date' => now()->addMonths(2)->toDateString(),
             'venue_name' => 'O2 Academy',
             'city' => 'Leicester',
             'country' => 'GB',

@@ -9,6 +9,7 @@ interface Concert {
     id: number;
     name: string;
     startsAt: string;
+    localDate: string | null;
     venueName: string;
     city: string;
     country: string;
@@ -55,8 +56,14 @@ const statusLabels: Partial<Record<Concert['status'], string>> = {
     rescheduled: 'Rescheduled',
 };
 
-function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const dateFormat: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+
+// Show the venue's local calendar date; localDate is a plain date, so format it in UTC to avoid shifting.
+function formatDate(concert: Concert): string {
+    if (concert.localDate) {
+        return new Date(concert.localDate + 'T00:00:00Z').toLocaleDateString('en-GB', { ...dateFormat, timeZone: 'UTC' });
+    }
+    return new Date(concert.startsAt).toLocaleDateString('en-GB', dateFormat);
 }
 </script>
 
@@ -111,7 +118,7 @@ function formatDate(iso: string): string {
             <ul class="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
                 <li v-for="concert in concerts" :key="concert.id" class="flex items-center gap-3 py-3">
                     <div class="min-w-0 flex-1">
-                        <p class="font-medium">{{ formatDate(concert.startsAt) }}</p>
+                        <p class="font-medium">{{ formatDate(concert) }}</p>
                         <p class="truncate text-sm text-neutral-500">{{ concert.venueName }} · {{ concert.city }}, {{ concert.country }}</p>
                         <span
                             v-if="statusLabels[concert.status]"

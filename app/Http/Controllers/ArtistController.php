@@ -51,6 +51,7 @@ class ArtistController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'startsAt' => $c->starts_at->toIso8601String(),
+                'localDate' => $c->local_date?->toDateString(),
                 'venueName' => $c->venue_name,
                 'city' => $c->city,
                 'country' => $c->country,

@@ -65,6 +65,7 @@ it('maps upcoming events to concerts and skips dateless ones', function () {
     expect($manchester)->toBeInstanceOf(ConcertData::class)
         ->and($manchester->id)->toBe('G5vYZ9abc001')
         ->and($manchester->startsAt->toIso8601String())->toBe('2027-03-14T19:30:00+00:00')
+        ->and($manchester->localDate)->toBe('2027-03-14')
         ->and($manchester->venueName)->toBe('O2 Victoria Warehouse')
         ->and($manchester->city)->toBe('Manchester')
         ->and($manchester->country)->toBe('GB')
@@ -72,6 +73,7 @@ it('maps upcoming events to concerts and skips dateless ones', function () {
         ->and($manchester->lng)->toBe(-2.285)
         ->and($manchester->status)->toBe('onsale')
         ->and($dublin->startsAt->toDateString())->toBe('2027-04-02')
+        ->and($dublin->localDate)->toBe('2027-04-02')
         ->and($dublin->lat)->toBeNull()
         ->and($dublin->status)->toBe('cancelled');
 
@@ -147,4 +149,12 @@ it('drops non-http(s) ticket and image URLs', function () {
 
     expect($client->upcomingEvents('A1')[0]->ticketUrl)->toBe('')
         ->and($client->attraction('A1')->imageUrl)->toBeNull();
+});
+
+it('falls back to the UTC date when an event has a dateTime but no localDate', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [[
+        'id' => 'E1', 'name' => 'Gig', 'dates' => ['start' => ['dateTime' => '2027-05-01T23:30:00Z']],
+    ]]]])]);
+
+    expect(app(TicketmasterClient::class)->upcomingEvents('A1')[0]->localDate)->toBe('2027-05-01');
 });

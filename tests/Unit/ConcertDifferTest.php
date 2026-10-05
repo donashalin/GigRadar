@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 
 function concertData(string $id): ConcertData
 {
-    return new ConcertData($id, 'Gig', CarbonImmutable::parse('2027-01-01'), 'Venue', 'City', 'GB', null, null, 'https://x', 'onsale');
+    return new ConcertData($id, 'Gig', CarbonImmutable::parse('2027-01-01'), '2027-01-01', 'Venue', 'City', 'GB', null, null, 'https://x', 'onsale');
 }
 
 it('splits fetched concerts into new and existing by Ticketmaster id', function () {

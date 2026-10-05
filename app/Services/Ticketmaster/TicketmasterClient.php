@@ -139,6 +139,7 @@ class TicketmasterClient
             id: $event['id'],
             name: $event['name'],
             startsAt: $startsAt,
+            localDate: $start['localDate'] ?? $startsAt->toDateString(),
             venueName: $venue['name'] ?? 'Venue TBA',
             city: $venue['city']['name'] ?? '',
             country: $venue['country']['countryCode'] ?? '',

@@ -22,6 +22,7 @@ it('stores fetched concerts as new and marks the artist seeded', function () {
 
     $manchester = $artist->concerts()->where('ticketmaster_id', 'G5vYZ9abc001')->first();
     expect($manchester->city)->toBe('Manchester')
+        ->and($manchester->local_date->toDateString())->toBe('2027-03-14')
         ->and($manchester->lat)->toBe(53.4668)
         ->and($manchester->first_seen_at)->not->toBeNull();
 });

@@ -10,6 +10,7 @@ final readonly class ConcertData
         public string $id,
         public string $name,
         public CarbonImmutable $startsAt,
+        public string $localDate,
         public string $venueName,
         public string $city,
         public string $country,

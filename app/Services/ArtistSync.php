@@ -58,6 +58,7 @@ class ArtistSync
         return [
             'name' => $c->name,
             'starts_at' => $c->startsAt,
+            'local_date' => $c->localDate,
             'venue_name' => $c->venueName,
             'city' => $c->city,
             'country' => $c->country,
