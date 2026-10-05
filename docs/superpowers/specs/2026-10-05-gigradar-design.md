@@ -41,7 +41,7 @@ Laravel app ──────────────────────�
         ▼                       ▼
    Resend (email)      Browser push services (Apple / Google / Mozilla)
 
-MySQL: users, artists, follows, events, push_subscriptions, jobs, cache
+MySQL: users, artists, follows, concerts, push_subscriptions, jobs, cache
 ```
 
 - The browser never calls Ticketmaster; the API key lives in `.env` (`TICKETMASTER_API_KEY`) and is used only server-side.
@@ -90,18 +90,19 @@ follows
   last_seen_at timestamp, timestamps
   unique(user_id, artist_id)
 
-events
-  id, artist_id FK cascade, ticketmaster_id varchar unique, name,
+concerts                -- model Concert (avoids clashing with Laravel's Event facade)
+  id, artist_id FK cascade, ticketmaster_id varchar, name,
   starts_at datetime (UTC), venue_name, city, country,
   lat decimal(10,7) null, lng decimal(10,7) null, ticket_url,
   status enum('onsale','offsale','cancelled','postponed','rescheduled'),
   first_seen_at timestamp, timestamps
+  unique(artist_id, ticketmaster_id)   -- one Ticketmaster event can list several artists
   index(artist_id, starts_at)
 
 push_subscriptions   -- migration published by laravel-notification-channels/webpush
 ```
 
-**Relationships:** `User belongsToMany Artist` via `follows` (pivot model `Follow` with `alert_scope`, `last_seen_at`); `Artist belongsToMany User` as `followers`; `Artist hasMany Event`; `User` uses `HasPushSubscriptions`.
+**Relationships:** `User belongsToMany Artist` via `follows` (pivot model `Follow` with `alert_scope`, `last_seen_at`); `Artist belongsToMany User` as `followers`; `Artist hasMany Concert`; `User` uses `HasPushSubscriptions`.
 
 **Authorisation:** all app routes require `auth` + `verified`. Follows and settings are always scoped to `auth()->user()`; there are no routes taking another user's ID. Artists and events are readable by any verified user.
 
@@ -109,9 +110,10 @@ push_subscriptions   -- migration published by laravel-notification-channels/web
 
 | Class | Responsibility | Depends on |
 |---|---|---|
-| `App\Services\Ticketmaster\TicketmasterClient` | Only class aware of Ticketmaster. `searchAttractions(string)`, `upcomingEvents(string $attractionId)`. Maps JSON to DTOs (`ArtistData`, `EventData`). Throttles to ≤ 4 req/sec. | `Http` facade, config |
-| `App\Services\ArtistSync` | `syncEvents(Artist): Collection<Event> $new` — fetches events, upserts, sets `first_seen_at` on unseen IDs, updates changed fields, sets `last_checked_at`. | `TicketmasterClient` |
-| `App\Support\EventDiffer` | Pure: given stored IDs and fetched DTOs, returns new / updated sets. | — |
+| `App\Services\Ticketmaster\TicketmasterClient` | Only class aware of Ticketmaster. `searchAttractions(string)`, `upcomingEvents(string $attractionId)`. Maps JSON to DTOs (`ArtistData`, `ConcertData`); also `attraction(string $id)` for single-artist lookup. Throttles to ≤ 4 req/sec. | `Http` facade, config |
+| `App\Services\ArtistSync` | `syncEvents(Artist): Collection<Concert> $new` — fetches events, upserts concerts, sets `first_seen_at` on unseen IDs, updates changed fields, sets `seeded = true` and `last_checked_at`. | `TicketmasterClient` |
+| `App\Services\ArtistResolver` | `resolve(string $ticketmasterId): Artist` — finds locally or creates via `attraction()` lookup. | `TicketmasterClient` |
+| `App\Support\ConcertDiffer` | Pure: given stored IDs and fetched DTOs, returns new / updated sets. | — |
 | `App\Support\Geo` | Pure: `distanceMiles(lat1, lng1, lat2, lng2)` (haversine). | — |
 | `App\Support\RecipientSelector` | Pure: given new events and followers (with pivot + location), returns `user → events` to alert. | `Geo` |
 | `App\Notifications\NewTourDates` | Queued. `via()` returns enabled channels (`mail` if `notify_email`; `WebPushChannel` if `notify_push` and user has subscriptions). Builds message. | — |
@@ -121,7 +123,7 @@ push_subscriptions   -- migration published by laravel-notification-channels/web
 ### Controllers / routes
 - `GET /search?q=` — Inertia page; results via `TicketmasterClient::searchAttractions`, cached 10 min per normalised query.
 - `GET /artists/{ticketmasterId}` — upserts the artist; if `last_checked_at` older than 6 hours or null, calls `ArtistSync::syncEvents` and marks `seeded = true` **without alerting**; renders events; updates `last_seen_at` if followed.
-- `POST /artists/{ticketmasterId}/follow`, `DELETE …/follow`, `PATCH …/follow` (alert_scope).
+- `POST /artists/{ticketmasterId}/follow` (resolves the artist; seeds concerts without alerting if not yet seeded), `DELETE …/follow`, `PATCH …/follow` (alert_scope).
 - `GET /dashboard` — My Artists.
 - `GET/PATCH /settings`, `DELETE /settings/account`.
 - `POST /push-subscriptions`, `DELETE /push-subscriptions` — store/remove the current device's subscription.
@@ -155,7 +157,7 @@ Scheduled `everySixHours()`, `withoutOverlapping()`, timezone Europe/London.
 
 ## 9. Testing (Pest)
 
-- **Unit:** `EventDiffer`, `Geo::distanceMiles`, `RecipientSelector` (scope rules, fallbacks, cancelled excluded), `NewTourDates` message text and channel selection.
+- **Unit:** `ConcertDiffer`, `Geo::distanceMiles`, `RecipientSelector` (scope rules, fallbacks, cancelled excluded), `NewTourDates` message text and channel selection.
 - **Feature:**
   - `TicketmasterClient` mapping against recorded JSON fixtures via `Http::fake()`.
   - `gigradar:check-dates` with `Http::fake()` + `Notification::fake()`: unseeded artist sends nothing; new event notifies the right users exactly once per artist; nearby users outside radius not notified.
