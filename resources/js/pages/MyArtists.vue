@@ -20,13 +20,16 @@ interface NearbyConcert {
     startsAt: string;
     venueName: string;
     city: string;
-    distanceMiles: number;
+    distanceMiles: number | null;
 }
 
 defineProps<{
     artists: ArtistRow[];
     hasHomeLocation: boolean;
+    nearbyMode: 'country' | 'radius';
+    homeCountryCode: string | null;
     radiusMiles: number;
+    areaLabel: string | null;
     nearby: NearbyConcert[];
 }>();
 
@@ -40,13 +43,13 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
             <section v-if="artists.length > 0" aria-labelledby="upcoming-near-you">
                 <h2 id="upcoming-near-you" class="text-lg font-semibold">Upcoming near you</h2>
 
-                <p v-if="!hasHomeLocation" class="mt-2 text-sm text-neutral-500">
-                    <Link href="/settings/alerts" class="font-medium text-violet-600 dark:text-violet-400">Set your home location</Link>
+                <p v-if="areaLabel === null" class="mt-2 text-sm text-neutral-500">
+                    <Link href="/settings/alerts" class="font-medium text-violet-600 dark:text-violet-400">{{
+                        hasHomeLocation ? 'Re-pick your home location' : 'Set your home location'
+                    }}</Link>
                     to see gigs near you.
                 </p>
-                <p v-else-if="nearby.length === 0" class="mt-2 text-sm text-neutral-500">
-                    No upcoming gigs within {{ radiusMiles }} miles yet.
-                </p>
+                <p v-else-if="nearby.length === 0" class="mt-2 text-sm text-neutral-500">No upcoming gigs {{ areaLabel }} yet.</p>
                 <ul v-else class="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
                     <li v-for="concert in nearby" :key="concert.id">
                         <Link :href="`/artists/${concert.artistTicketmasterId}`" class="flex min-h-11 items-center gap-3 rounded-lg py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">
@@ -56,7 +59,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
                                     {{ formatConcertDate(concert.localDate, concert.startsAt, shortDate) }} · {{ concert.venueName }}, {{ concert.city }}
                                 </p>
                             </div>
-                            <span class="shrink-0 text-xs text-neutral-500">{{ concert.distanceMiles }} mi</span>
+                            <span v-if="concert.distanceMiles !== null" class="shrink-0 text-xs text-neutral-500">{{ concert.distanceMiles }} mi</span>
                         </Link>
                     </li>
                 </ul>

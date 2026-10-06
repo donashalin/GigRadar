@@ -7,7 +7,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 function leicesterHome(): array
 {
-    return ['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6369, 'home_lng' => -1.1398, 'radius_miles' => 50];
+    return ['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6369, 'home_lng' => -1.1398, 'home_country_code' => 'GB', 'nearby_mode' => 'radius', 'radius_miles' => 50];
 }
 
 function followArtist(User $user, Artist $artist, array $pivot = []): void
@@ -87,6 +87,9 @@ it('lists upcoming concerts within the radius, excluding cancelled', function ()
     $this->actingAs($user)->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page->where('hasHomeLocation', true)
             ->where('radiusMiles', 50)
+            ->where('nearbyMode', 'radius')
+            ->where('homeCountryCode', 'GB')
+            ->where('areaLabel', 'within 50 miles')
             ->has('nearby', 1)
             ->where('nearby.0.id', $leicester->id)
             ->where('nearby.0.artistName', 'Local Band')
@@ -155,4 +158,45 @@ it('skips cancelled concerts when picking the next concert', function () {
 
     $this->actingAs($user)->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page->where('artists.0.nextConcert.localDate', today()->addDays(6)->toDateString()));
+});
+
+it('lists every upcoming concert in the home country in country mode', function () {
+    $user = User::factory()->create([...leicesterHome(), 'nearby_mode' => 'country']);
+    $artist = Artist::factory()->create();
+    followArtist($user, $artist);
+    $day = fn (int $n) => ['local_date' => today()->addDays($n)->toDateString(), 'starts_at' => now()->addDays($n)];
+    $manchester = Concert::factory()->for($artist)->create([...$day(1), 'city' => 'Manchester', 'country' => 'GB', 'lat' => 53.4808, 'lng' => -2.2426]);
+    $glasgow = Concert::factory()->for($artist)->create([...$day(2), 'city' => 'Glasgow', 'country' => 'GB', 'lat' => 55.8642, 'lng' => -4.2518]);
+    Concert::factory()->for($artist)->create([...$day(3), 'city' => 'Dublin', 'country' => 'IE', 'lat' => 53.3498, 'lng' => -6.2603]);
+    $noCoords = Concert::factory()->for($artist)->create([...$day(4), 'city' => 'Somewhere', 'country' => 'GB', 'lat' => null, 'lng' => null]);
+    Concert::factory()->for($artist)->create([...$day(5), 'country' => 'GB', 'status' => 'cancelled']);
+    Concert::factory()->for($artist)->create([...$day(6), 'country' => '']);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('hasHomeLocation', true)
+            ->where('nearbyMode', 'country')
+            ->where('homeCountryCode', 'GB')
+            ->where('areaLabel', 'in United Kingdom')
+            ->has('nearby', 3)
+            ->where('nearby.0.id', $manchester->id)
+            ->where('nearby.0.distanceMiles', 74)
+            ->where('nearby.1.id', $glasgow->id)
+            ->where('nearby.2.id', $noCoords->id)
+            ->where('nearby.2.distanceMiles', null));
+});
+
+it('shows nothing nearby in country mode without a home country code', function () {
+    $user = User::factory()->create([...leicesterHome(), 'home_country_code' => null, 'nearby_mode' => 'country']);
+    followArtist($user, Concert::factory()->create()->artist);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('hasHomeLocation', true)
+            ->where('areaLabel', null)
+            ->has('nearby', 0));
+
+    $none = User::factory()->create(['nearby_mode' => 'country']);
+    followArtist($none, Concert::factory()->create()->artist);
+
+    $this->actingAs($none)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('hasHomeLocation', false)->where('areaLabel', null)->has('nearby', 0));
 });

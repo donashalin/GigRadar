@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Artist;
 use App\Models\Concert;
-use App\Support\Geo;
+use App\Support\NearbyArea;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -20,13 +20,16 @@ class MyArtistsController extends Controller
         $artists = $user->artists()->orderBy('name')->get();
         $upcoming = Concert::query()->whereIn('artist_id', $artists->modelKeys())->upcoming()->get();
         $byArtist = $upcoming->groupBy('artist_id');
-        $hasHomeLocation = $user->home_lat !== null && $user->home_lng !== null;
+        $area = NearbyArea::forUser($user);
 
         return Inertia::render('MyArtists', [
             'artists' => $artists->map(fn (Artist $artist) => $this->artistRow($artist, $byArtist->get($artist->id, collect())))->values(),
-            'hasHomeLocation' => $hasHomeLocation,
+            'hasHomeLocation' => $user->home_lat !== null && $user->home_lng !== null,
+            'nearbyMode' => $user->nearby_mode,
+            'homeCountryCode' => $user->home_country_code,
             'radiusMiles' => $user->radius_miles,
-            'nearby' => $hasHomeLocation ? $this->nearby($upcoming, $artists, $user->home_lat, $user->home_lng, $user->radius_miles) : [],
+            'areaLabel' => $area->isConfigured() ? $this->areaLabel($area) : null,
+            'nearby' => $area->isConfigured() ? $this->nearby($upcoming, $artists, $area) : [],
         ]);
     }
 
@@ -50,29 +53,40 @@ class MyArtistsController extends Controller
         ];
     }
 
+    /** "in United Kingdom" / "within 50 miles" */
+    private function areaLabel(NearbyArea $area): string
+    {
+        if ($area->mode === 'radius') {
+            return "within {$area->radiusMiles} miles";
+        }
+
+        $code = (string) $area->homeCountryCode;
+        $name = class_exists(\Locale::class) ? \Locale::getDisplayRegion('-'.$code, 'en') : $code;
+
+        return 'in '.($name !== '' ? $name : $code);
+    }
+
     /**
      * @param  Collection<int, Concert>  $upcoming  soonest first
      * @param  Collection<int, Artist>  $artists
      */
-    private function nearby(Collection $upcoming, Collection $artists, float $lat, float $lng, int $radiusMiles): array
+    private function nearby(Collection $upcoming, Collection $artists, NearbyArea $area): array
     {
         $names = $artists->pluck('name', 'id');
         $ticketmasterIds = $artists->pluck('ticketmaster_id', 'id');
 
         return $upcoming
-            ->filter(fn (Concert $c) => $c->status !== 'cancelled' && $c->lat !== null && $c->lng !== null)
-            ->map(fn (Concert $c) => [$c, Geo::distanceMiles($lat, $lng, $c->lat, $c->lng)])
-            ->filter(fn (array $pair) => $pair[1] <= $radiusMiles)
+            ->filter(fn (Concert $c) => $c->status !== 'cancelled' && $area->contains($c->country, $c->lat, $c->lng) === true)
             ->take(self::NEARBY_LIMIT)
-            ->map(fn (array $pair) => [
-                'id' => $pair[0]->id,
-                'artistName' => $names[$pair[0]->artist_id],
-                'artistTicketmasterId' => $ticketmasterIds[$pair[0]->artist_id],
-                'localDate' => $pair[0]->local_date?->toDateString(),
-                'startsAt' => $pair[0]->starts_at->toIso8601String(),
-                'venueName' => $pair[0]->venue_name,
-                'city' => $pair[0]->city,
-                'distanceMiles' => (int) round($pair[1]),
+            ->map(fn (Concert $c) => [
+                'id' => $c->id,
+                'artistName' => $names[$c->artist_id],
+                'artistTicketmasterId' => $ticketmasterIds[$c->artist_id],
+                'localDate' => $c->local_date?->toDateString(),
+                'startsAt' => $c->starts_at->toIso8601String(),
+                'venueName' => $c->venue_name,
+                'city' => $c->city,
+                'distanceMiles' => ($distance = $area->distanceMiles($c->lat, $c->lng)) !== null ? (int) round($distance) : null,
             ])
             ->values()
             ->all();
