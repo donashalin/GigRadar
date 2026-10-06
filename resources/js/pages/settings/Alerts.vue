@@ -79,6 +79,7 @@ watch(placeQuery, (value) => {
 });
 
 onBeforeUnmount(() => {
+    lookupId++;
     clearTimeout(timer);
     searchController?.abort();
     reverseController?.abort();

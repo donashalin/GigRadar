@@ -72,12 +72,12 @@ const statusLabels: Partial<Record<Concert['status'], string>> = {
 
 <template>
     <Head :title="artist.name" />
-    <AppLayout :breadcrumbs="[{ title: artist.name, href: `/artists/${artist.ticketmasterId}` }]">
+    <AppLayout :breadcrumbs="[{ title: 'Artist', href: `/artists/${artist.ticketmasterId}` }]">
         <div class="mx-auto w-full max-w-xl p-4">
             <img v-if="artist.imageUrl" :src="artist.imageUrl" alt="" class="aspect-video w-full rounded-2xl object-cover" />
 
             <div class="mt-4 flex items-center justify-between gap-3">
-                <h1 class="text-2xl font-bold">{{ artist.name }}</h1>
+                <h2 class="text-2xl font-bold">{{ artist.name }}</h2>
                 <button
                     type="button"
                     :aria-pressed="following"

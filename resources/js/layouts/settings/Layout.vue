@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { type NavItem } from '@/types';
@@ -31,10 +30,8 @@ const currentPath = computed(() => page.url.split('?')[0]);
 
 <template>
     <div class="px-4 py-6">
-        <Heading title="Settings" description="Manage alerts, your profile and account" />
-
-        <div class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-x-12 lg:space-y-0">
-            <aside class="w-full max-w-xl lg:w-48">
+        <div class="flex flex-col space-y-8">
+            <aside class="w-full">
                 <nav class="flex flex-col space-x-0 space-y-1">
                     <Button
                         v-for="item in sidebarNavItems"
@@ -58,9 +55,9 @@ const currentPath = computed(() => page.url.split('?')[0]);
                 </Link>
             </aside>
 
-            <Separator class="my-6 md:hidden" />
+            <Separator class="my-6" />
 
-            <div class="flex-1 md:max-w-2xl">
+            <div class="flex-1">
                 <section class="max-w-xl space-y-12">
                     <slot />
                 </section>

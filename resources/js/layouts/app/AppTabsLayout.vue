@@ -16,7 +16,7 @@ const title = computed(() => props.breadcrumbs.at(-1)?.title ?? 'GigRadar');
             class="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
         >
             <div class="mx-auto flex h-14 w-full max-w-xl items-center px-4">
-                <p class="truncate text-lg font-semibold">{{ title }}</p>
+                <h1 class="truncate text-lg font-semibold">{{ title }}</h1>
             </div>
         </header>
 

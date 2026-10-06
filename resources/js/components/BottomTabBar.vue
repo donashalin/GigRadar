@@ -23,8 +23,8 @@ const isActive = (match: string[]) =>
             <li v-for="tab in tabs" :key="tab.href">
                 <Link
                     :href="tab.href"
-                    class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium"
-                    :class="isActive(tab.match) ? 'text-violet-600' : 'text-neutral-500'"
+                    class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+                    :class="isActive(tab.match) ? 'text-violet-600 dark:text-violet-400' : 'text-neutral-500 dark:text-neutral-400'"
                     :aria-current="isActive(tab.match) ? 'page' : undefined"
                 >
                     <component :is="tab.icon" class="size-6" aria-hidden="true" />
