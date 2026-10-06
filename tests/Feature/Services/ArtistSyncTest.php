@@ -129,7 +129,8 @@ it('marks concerts stored while seeding as from_seed', function () {
 
     app(ArtistSync::class)->syncEvents($artist);
 
-    expect($artist->concerts()->where('from_seed', false)->count())->toBe(0);
+    expect($artist->concerts()->where('from_seed', true)->count())->toBe(2)
+        ->and($artist->concerts()->where('from_seed', false)->count())->toBe(0);
 });
 
 it('does not mark concerts of an already-seeded artist as from_seed', function () {
@@ -138,5 +139,6 @@ it('does not mark concerts of an already-seeded artist as from_seed', function (
 
     app(ArtistSync::class)->syncEvents($artist);
 
-    expect($artist->concerts()->where('from_seed', true)->count())->toBe(0);
+    expect($artist->concerts()->where('from_seed', false)->count())->toBe(2)
+        ->and($artist->concerts()->where('from_seed', true)->count())->toBe(0);
 });
