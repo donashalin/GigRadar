@@ -43,6 +43,7 @@ class AlertSettingsController extends Controller
             'notify_email' => ['required', 'boolean'],
         ]);
 
+        // Omitted location keys are absent from $validated, so the existing location is kept.
         $request->user()->forceFill($validated)->save();
 
         return to_route('alerts.edit');
@@ -50,6 +51,7 @@ class AlertSettingsController extends Controller
 
     public function places(Request $request, Geocoder $geocoder): JsonResponse
     {
+        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
         $q = trim((string) $request->query('q', ''));
         if (mb_strlen($q) < 3) {
             return response()->json([]);

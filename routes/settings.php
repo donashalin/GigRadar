@@ -25,7 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/alerts', [AlertSettingsController::class, 'edit'])->name('alerts.edit');
     Route::patch('settings/alerts', [AlertSettingsController::class, 'update'])->name('alerts.update');
     Route::get('settings/alerts/places', [AlertSettingsController::class, 'places'])
-        ->middleware('throttle:30,1')->name('alerts.places');
+        ->middleware('throttle:geo-search')->name('alerts.places');
     Route::get('settings/alerts/reverse', [AlertSettingsController::class, 'reverse'])
-        ->middleware('throttle:10,1')->name('alerts.reverse');
+        ->middleware('throttle:geo-reverse')->name('alerts.reverse');
 });

@@ -120,3 +120,68 @@ it('deletes follows when the account is deleted', function () {
 
     expect(Illuminate\Support\Facades\DB::table('follows')->count())->toBe(0);
 });
+
+it('keeps place search and reverse lookups on separate rate limits', function () {
+    Http::fake([
+        'nominatim.openstreetmap.org/search*' => Http::response(nominatimFixture('search')),
+        'nominatim.openstreetmap.org/reverse*' => Http::response(nominatimFixture('reverse')),
+    ]);
+    $user = User::factory()->create();
+
+    foreach (range(1, 10) as $i) {
+        $this->actingAs($user)->getJson('/settings/alerts/places?q=Leicester'.$i)->assertOk();
+    }
+
+    $this->actingAs($user)->getJson('/settings/alerts/reverse?lat=52.6362&lng=-1.1331')->assertOk();
+});
+
+it('rejects place queries over 100 characters', function () {
+    Http::fake();
+
+    $this->actingAs(User::factory()->create())->getJson('/settings/alerts/places?q='.str_repeat('a', 101))->assertUnprocessable();
+    Http::assertNothingSent();
+});
+
+it('returns nothing for a missing or blank place query', function () {
+    Http::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->getJson('/settings/alerts/places')->assertOk()->assertExactJson([]);
+    $this->actingAs($user)->getJson('/settings/alerts/places?q=%20%20%20')->assertOk()->assertExactJson([]);
+    Http::assertNothingSent();
+});
+
+it('reports reverse lookup outages', function () {
+    Http::fake(['nominatim.openstreetmap.org/*' => Http::response('', 503)]);
+
+    $this->actingAs(User::factory()->create())->getJson('/settings/alerts/reverse?lat=52.6&lng=-1.1')
+        ->assertStatus(503)->assertJsonPath('message', 'Location lookup is unavailable right now.');
+});
+
+it('validates reverse-geocode longitude', function (string $query) {
+    $this->actingAs(User::factory()->create())->getJson('/settings/alerts/reverse?lat=52.6'.$query)->assertUnprocessable();
+})->with(['missing' => [''], 'non-numeric' => ['&lng=abc']]);
+
+it('keeps other users and their follows when an account is deleted', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $artist = Artist::factory()->create();
+    $user->artists()->attach($artist, ['last_seen_at' => now()]);
+    $other->artists()->attach($artist, ['last_seen_at' => now()]);
+
+    $this->actingAs($user)->delete('/settings/profile', ['password' => 'password'])->assertRedirect('/');
+
+    expect(User::find($user->id))->toBeNull()
+        ->and(User::find($other->id))->not->toBeNull()
+        ->and(Illuminate\Support\Facades\DB::table('follows')->count())->toBe(1);
+});
+
+it('keeps the existing location when a patch omits the location keys', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1]);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 100, 'notify_email' => true])
+        ->assertSessionHasNoErrors();
+
+    $user->refresh();
+    expect($user->home_location_name)->toBe('Leicester')->and($user->home_lat)->toBe(52.6)->and($user->radius_miles)->toBe(100);
+});

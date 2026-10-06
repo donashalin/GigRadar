@@ -5,6 +5,7 @@ use App\Services\Geocoding\GeocoderException;
 use App\Services\Geocoding\Place;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 
 it('searches places with short labels and identifies itself', function () {
     Http::fake(['nominatim.openstreetmap.org/search*' => Http::response(nominatimFixture('search'))]);
@@ -84,6 +85,7 @@ it('skips malformed results', function () {
         ['lat' => 'abc', 'lon' => '-1.1', 'display_name' => 'Bad lat'],
         ['lat' => '52.6', 'lon' => '-1.1', 'display_name' => ['x']],
         ['lat' => '52.6', 'lon' => '-1.1', 'display_name' => ''],
+        ['lat' => '52.6', 'lon' => '-1.1', 'display_name' => ', ,'],
     ])]);
 
     expect(app(Geocoder::class)->search('Leicester'))->toHaveCount(1);
@@ -117,4 +119,22 @@ it('keeps queries and coordinates out of exception messages', function () {
     foreach ($messages as $m) {
         expect($m)->not->toContain('SecretTown')->not->toContain('51.12')->not->toContain('-0.65');
     }
+});
+
+it('stops calling Nominatim once the app-wide limit is reached', function () {
+    Http::fake();
+    for ($i = 0; $i < 60; $i++) {
+        RateLimiter::hit('nominatim', 60);
+    }
+
+    expect(fn () => app(Geocoder::class)->search('Leicester'))->toThrow(GeocoderException::class, 'Nominatim rate limit reached');
+    Http::assertNothingSent();
+});
+
+it('caches points that cannot be reverse-geocoded', function () {
+    Http::fake(['nominatim.openstreetmap.org/reverse*' => Http::response(['error' => 'Unable to geocode'])]);
+
+    expect(app(Geocoder::class)->reverse(0.0, 0.0))->toBeNull()
+        ->and(app(Geocoder::class)->reverse(0.0, 0.0))->toBeNull();
+    Http::assertSentCount(1);
 });

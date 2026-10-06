@@ -5,6 +5,7 @@ namespace App\Services\Geocoding;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 
 /** Place lookup via OpenStreetMap Nominatim. Results are cached; lookups use ~100 m precision; returned coordinates are rounded to 4dp. */
 class Geocoder
@@ -31,13 +32,21 @@ class Geocoder
         $lng = round($lng, 3);
         $key = sprintf('geo:reverse:%.3f,%.3f', $lat, $lng);
 
-        return Cache::remember($key, now()->addDays(30), fn () => $this->toPlace(
+        // false is a sentinel for "no place here" (Cache::remember treats null as a miss).
+        $place = Cache::remember($key, now()->addDays(30), fn () => $this->toPlace(
             $this->get('/reverse', ['lat' => $lat, 'lon' => $lng, 'format' => 'jsonv2', 'zoom' => 10, 'accept-language' => 'en']),
-        ));
+        ) ?? false);
+
+        return $place ?: null;
     }
 
     private function get(string $path, array $query): array
     {
+        // App-wide cap (~1 req/s average); cached lookups never reach here.
+        if (! RateLimiter::attempt('nominatim', 60, fn () => true, 60)) {
+            throw new GeocoderException('Nominatim rate limit reached');
+        }
+
         try {
             $response = Http::baseUrl(self::BASE_URL)
                 ->withUserAgent($this->userAgent)
@@ -71,8 +80,13 @@ class Geocoder
             return null;
         }
 
+        $name = $this->label($result['display_name']);
+        if ($name === '') {
+            return null;
+        }
+
         return new Place(
-            name: $this->label($result['display_name']),
+            name: $name,
             lat: round((float) $result['lat'], 4),
             lng: round((float) $result['lon'], 4),
         );

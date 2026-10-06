@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Services\Geocoding\Geocoder;
 use App\Services\Ticketmaster\TicketmasterClient;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        RateLimiter::for('geo-search', fn (Request $r) => Limit::perMinute(30)->by('geo-search:'.$r->user()?->id));
+        RateLimiter::for('geo-reverse', fn (Request $r) => Limit::perMinute(10)->by('geo-reverse:'.$r->user()?->id));
     }
 }
