@@ -254,15 +254,15 @@ function save() {
                     </template>
 
                     <p v-if="lookupError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ lookupError }}</p>
-                    <InputError :message="form.errors.home_location_name || form.errors.home_lat || form.errors.home_lng" />
+                    <InputError :message="form.errors.home_location_name || form.errors.home_lat || form.errors.home_lng || form.errors.home_country_code" />
                 </section>
 
                 <section class="space-y-3">
                     <HeadingSmall title="Distance" description="Which gigs count as near you." />
-                    <div class="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-5 dark:bg-neutral-900" role="group" aria-label="Distance">
+                    <div class="grid grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-5 dark:bg-neutral-900" role="group" aria-label="Distance">
                         <button
                             type="button"
-                            class="col-span-3 min-h-11 rounded-lg px-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 sm:col-span-1"
+                            class="col-span-4 min-h-11 rounded-lg px-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 sm:col-span-1"
                             :class="form.nearby_mode === 'country' ? 'bg-white shadow dark:bg-neutral-700' : 'text-neutral-600 dark:text-neutral-400'"
                             :aria-pressed="form.nearby_mode === 'country'"
                             @click="form.nearby_mode = 'country'"
@@ -287,7 +287,7 @@ function save() {
                     <p v-if="form.nearby_mode === 'country' && !form.home_country_code" class="text-sm text-neutral-500">
                         {{ form.home_location_name ? 'Re-pick your home location to use this.' : 'Set your home location so we know which country.' }}
                     </p>
-                    <InputError :message="form.errors.radius_miles" />
+                    <InputError :message="form.errors.nearby_mode || form.errors.radius_miles" />
                 </section>
 
                 <section class="space-y-3">

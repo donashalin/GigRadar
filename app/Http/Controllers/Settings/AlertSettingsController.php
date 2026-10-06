@@ -47,8 +47,10 @@ class AlertSettingsController extends Controller
             'notify_email' => ['required', 'boolean'],
         ]);
 
-        if (isset($validated['home_country_code'])) {
-            $validated['home_country_code'] = strtoupper($validated['home_country_code']);
+        // The country code belongs to the location: never keep a stale one when the location changes or is cleared.
+        if (array_key_exists('home_lat', $validated)) {
+            $code = $validated['home_lat'] === null ? null : ($validated['home_country_code'] ?? null);
+            $validated['home_country_code'] = ($code === null || $code === '') ? null : strtoupper($code);
         }
 
         // Omitted location keys are absent from $validated, so the existing location is kept.

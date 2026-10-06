@@ -13,6 +13,14 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    /** In-memory defaults mirroring the DB column defaults. */
+    protected $attributes = [
+        'nearby_mode' => 'country',
+        'radius_miles' => 50,
+        'notify_email' => true,
+        'notify_push' => true,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *

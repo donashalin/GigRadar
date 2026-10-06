@@ -62,8 +62,11 @@ class MyArtistsController extends Controller
 
         $code = (string) $area->homeCountryCode;
         $name = class_exists(\Locale::class) ? \Locale::getDisplayRegion('-'.$code, 'en') : $code;
+        if ($name === '' || $name === 'Unknown Region' || strcasecmp($name, $code) === 0) {
+            $name = $code;
+        }
 
-        return 'in '.($name !== '' ? $name : $code);
+        return 'in '.$name;
     }
 
     /**

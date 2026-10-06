@@ -44,3 +44,14 @@ it('deletes follows and concerts when an artist is deleted', function () {
 
     expect(Concert::count())->toBe(0)->and($user->artists()->count())->toBe(0);
 });
+
+it('applies alert defaults in memory and builds a NearbyArea from them', function () {
+    $user = User::create(['name' => 'T', 'email' => 't@example.com', 'password' => 'secret-pass']);
+
+    expect($user->nearby_mode)->toBe('country')
+        ->and($user->radius_miles)->toBe(50)
+        ->and($user->notify_email)->toBeTrue();
+
+    $area = App\Support\NearbyArea::forUser($user);
+    expect($area->mode)->toBe('country')->and($area->radiusMiles)->toBe(50)->and($area->isConfigured())->toBeFalse();
+});

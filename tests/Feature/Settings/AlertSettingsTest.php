@@ -216,3 +216,25 @@ it('keeps the existing country code when a patch omits it', function () {
 
     expect($user->fresh()->home_country_code)->toBe('GB');
 });
+
+it('drops a stale country code when the location changes without one', function (array $patch) {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB']);
+
+    $this->actingAs($user)->patch('/settings/alerts', [
+        'home_location_name' => 'Dublin', 'home_lat' => 53.3, 'home_lng' => -6.2,
+        'radius_miles' => 50, 'nearby_mode' => 'country', 'notify_email' => true, ...$patch,
+    ])->assertSessionHasNoErrors();
+
+    expect($user->fresh()->home_country_code)->toBeNull();
+})->with(['missing' => [[]], 'null' => [['home_country_code' => null]], 'empty' => [['home_country_code' => '']]]);
+
+it('forces the country code to null when the location is cleared', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB']);
+
+    $this->actingAs($user)->patch('/settings/alerts', [
+        'home_location_name' => null, 'home_lat' => null, 'home_lng' => null, 'home_country_code' => 'GB',
+        'radius_miles' => 50, 'nearby_mode' => 'country', 'notify_email' => true,
+    ])->assertSessionHasNoErrors();
+
+    expect($user->fresh()->home_country_code)->toBeNull();
+});
