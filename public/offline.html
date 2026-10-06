@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#7c3aed">
+    <title>Offline - GigRadar</title>
+    <style>
+        :root { color-scheme: light dark; --bg: #ffffff; --fg: #171717; --muted: #525252; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #0a0a0a; --fg: #fafafa; --muted: #a3a3a3; } }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, sans-serif; text-align: center; }
+        main { max-width: 22rem; }
+        img { width: 5rem; height: 5rem; border-radius: 1.25rem; }
+        h1 { font-size: 1.25rem; margin: 1.25rem 0 0.5rem; }
+        p { margin: 0 0 1.5rem; color: var(--muted); line-height: 1.5; }
+        button { min-height: 2.75rem; padding: 0 1.5rem; border: 0; border-radius: 0.75rem; background: #7c3aed; color: #fff; font: inherit; font-weight: 600; }
+        button:focus-visible { outline: 2px solid #7c3aed; outline-offset: 2px; }
+    </style>
+</head>
+<body>
+    <main>
+        <img src="/icons/icon-192.png" alt="" width="80" height="80">
+        <h1>You're offline</h1>
+        <p>You're offline — GigRadar needs a connection to check tour dates.</p>
+        <button type="button" onclick="location.reload()">Retry</button>
+    </main>
+</body>
+</html>
