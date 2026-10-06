@@ -34,7 +34,7 @@ class MyArtistsController extends Controller
     private function artistRow(Artist $artist, Collection $concerts): array
     {
         $lastSeen = $artist->pivot->last_seen_at;
-        $next = $concerts->first();
+        $next = $concerts->first(fn (Concert $c) => $c->status !== 'cancelled');
 
         return [
             'ticketmasterId' => $artist->ticketmaster_id,

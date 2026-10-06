@@ -145,3 +145,14 @@ it('orders nearby concerts across artists by date and includes artist id and ven
             ->where('nearby.1.artistTicketmasterId', 'tm-b')
             ->where('nearby.2.venueName', 'Late Hall'));
 });
+
+it('skips cancelled concerts when picking the next concert', function () {
+    $user = User::factory()->create();
+    $artist = Artist::factory()->create();
+    followArtist($user, $artist);
+    Concert::factory()->for($artist)->create(['status' => 'cancelled', 'local_date' => today()->addDays(2)->toDateString(), 'starts_at' => now()->addDays(2)]);
+    Concert::factory()->for($artist)->create(['local_date' => today()->addDays(6)->toDateString(), 'starts_at' => now()->addDays(6)]);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('artists.0.nextConcert.localDate', today()->addDays(6)->toDateString()));
+});

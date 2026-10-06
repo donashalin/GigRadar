@@ -41,7 +41,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
                 <h2 id="upcoming-near-you" class="text-lg font-semibold">Upcoming near you</h2>
 
                 <p v-if="!hasHomeLocation" class="mt-2 text-sm text-neutral-500">
-                    <Link href="/settings/alerts" class="font-medium text-violet-600">Set your home location</Link>
+                    <Link href="/settings/alerts" class="font-medium text-violet-600 dark:text-violet-400">Set your home location</Link>
                     to see gigs near you.
                 </p>
                 <p v-else-if="nearby.length === 0" class="mt-2 text-sm text-neutral-500">
@@ -49,7 +49,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
                 </p>
                 <ul v-else class="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
                     <li v-for="concert in nearby" :key="concert.id">
-                        <Link :href="`/artists/${concert.artistTicketmasterId}`" class="flex min-h-11 items-center gap-3 py-3">
+                        <Link :href="`/artists/${concert.artistTicketmasterId}`" class="flex min-h-11 items-center gap-3 rounded-lg py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">
                             <div class="min-w-0 flex-1">
                                 <p class="truncate font-medium">{{ concert.artistName }}</p>
                                 <p class="truncate text-sm text-neutral-500">
@@ -75,7 +75,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
 
                 <ul v-else class="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
                     <li v-for="artist in artists" :key="artist.ticketmasterId">
-                        <Link :href="`/artists/${artist.ticketmasterId}`" class="flex min-h-11 items-center gap-3 py-3">
+                        <Link :href="`/artists/${artist.ticketmasterId}`" class="flex min-h-11 items-center gap-3 rounded-lg py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">
                             <img v-if="artist.imageUrl" :src="artist.imageUrl" alt="" class="size-12 shrink-0 rounded-lg object-cover" />
                             <div v-else class="size-12 shrink-0 rounded-lg bg-neutral-200 dark:bg-neutral-800" />
                             <div class="min-w-0 flex-1">
@@ -85,7 +85,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
                                         v-if="artist.hasNew"
                                         class="shrink-0 rounded-full bg-violet-600 px-2 py-0.5 text-xs font-semibold text-white"
                                     >
-                                        New
+                                        New<span class="sr-only"> dates</span>
                                     </span>
                                 </p>
                                 <p class="truncate text-sm text-neutral-500">
