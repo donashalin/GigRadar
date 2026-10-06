@@ -42,14 +42,24 @@ class Discover extends Command
 
             $fetched++;
             foreach ($events as $event) {
-                $created += $this->upsert($classificationId, $event) ? 1 : 0;
+                try {
+                    $created += $this->upsert($classificationId, $event) ? 1 : 0;
+                } catch (Throwable $e) {
+                    report($e);
+                    $failures++;
+                }
             }
         }
 
-        DiscoveryEvent::query()
-            ->where(fn ($q) => $q->where('local_date', '<', today()->toDateString())
-                ->orWhere(fn ($q) => $q->whereNull('local_date')->where('starts_at', '<', now()->startOfDay())))
-            ->delete();
+        try {
+            DiscoveryEvent::query()
+                ->where(fn ($q) => $q->where('local_date', '<', today()->toDateString())
+                    ->orWhere(fn ($q) => $q->whereNull('local_date')->where('starts_at', '<', now()->startOfDay())))
+                ->delete();
+        } catch (Throwable $e) {
+            report($e);
+            $failures++;
+        }
 
         $this->info("Fetched {$fetched} classifications, stored {$created} new gigs, {$failures} failures.");
 

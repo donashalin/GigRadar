@@ -57,3 +57,11 @@ it('lists artist names per bucket sorted by name', function () {
 
     expect($vibe[0]['artists'])->toBe(['apple', 'Mango', 'Zebra']);
 });
+
+it('orders equal weight and name ties deterministically by id', function () {
+    $a = vibeArtist('A', ['s9', 'Indie']);
+    $b = vibeArtist('B', ['s1', 'indie']);
+
+    expect(array_column(Vibe::for(collect([$a, $b])), 'id'))->toBe(['s1', 's9'])
+        ->and(array_column(Vibe::for(collect([$b, $a])), 'id'))->toBe(['s1', 's9']);
+});

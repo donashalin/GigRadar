@@ -29,7 +29,8 @@ it('stores classifications when creating an artist', function () {
 
     $artist = app(ArtistResolver::class)->resolve('K8vZ917G1V0')->fresh();
 
-    expect($artist->genre_id)->toBe('KnvZfZ7vAvv')
+    expect($artist->classifications_checked_at)->not->toBeNull()
+        ->and($artist->genre_id)->toBe('KnvZfZ7vAvv')
         ->and($artist->genre_name)->toBe('Alternative')
         ->and($artist->sub_genre_id)->toBe('KZazBEonSMnZfZ7vAde')
         ->and($artist->sub_genre_name)->toBe('Alternative Rock');

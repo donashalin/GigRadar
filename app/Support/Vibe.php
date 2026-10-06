@@ -37,7 +37,7 @@ final class Vibe
         unset($bucket);
 
         $list = array_values($buckets);
-        usort($list, fn ($a, $b) => [$b['weight'], $a['name']] <=> [$a['weight'], $b['name']]);
+        usort($list, fn ($a, $b) => [$b['weight'], mb_strtolower($a['name']), $a['id']] <=> [$a['weight'], mb_strtolower($b['name']), $b['id']]);
 
         return $list;
     }

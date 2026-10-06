@@ -28,6 +28,7 @@ class ArtistResolver
                 'genre_name' => $data->genreName,
                 'sub_genre_id' => $data->subGenreId,
                 'sub_genre_name' => $data->subGenreName,
+                'classifications_checked_at' => now(),
             ],
         );
     }

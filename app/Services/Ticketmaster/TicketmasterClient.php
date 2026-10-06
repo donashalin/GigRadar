@@ -10,6 +10,8 @@ class TicketmasterClient
 {
     private const BASE_URL = 'https://app.ticketmaster.com/discovery/v2';
 
+    private const MUSIC_SEGMENT_ID = 'KZFzniwnSyZfZ7v7nJ';
+
     private const STATUSES = ['onsale', 'offsale', 'cancelled', 'postponed', 'rescheduled'];
 
     private int $lastRequestNs = 0;
@@ -63,18 +65,30 @@ class TicketmasterClient
     /** @return list<DiscoveryEventData> */
     public function eventsByClassification(string $classificationId, string $countryCode): array
     {
-        $json = $this->get('/events.json', [
-            'classificationId' => $classificationId,
-            'countryCode' => $countryCode,
-            'classificationName' => 'music',
-            'sort' => 'date,asc',
-            'size' => 200,
-        ]);
-
+        $size = 200;
         $events = [];
-        foreach ($json['_embedded']['events'] ?? [] as $event) {
-            if (is_array($event) && ($discovery = $this->toDiscoveryEvent($event)) !== null) {
-                $events[] = $discovery;
+
+        // Deep paging is capped by Ticketmaster (size * page < 1000), so fetch at most 3 pages.
+        for ($page = 0; $page < 3 && $size * $page < 1000; $page++) {
+            $json = $this->get('/events.json', [
+                'classificationId' => $classificationId,
+                'countryCode' => $countryCode,
+                'segmentId' => self::MUSIC_SEGMENT_ID,
+                'sort' => 'date,asc',
+                'size' => $size,
+                'page' => $page,
+            ]);
+
+            $raw = is_array($json['_embedded']['events'] ?? null) ? $json['_embedded']['events'] : [];
+            foreach ($raw as $event) {
+                if (is_array($event) && ($discovery = $this->toDiscoveryEvent($event)) !== null) {
+                    $events[] = $discovery;
+                }
+            }
+
+            $totalPages = $json['page']['totalPages'] ?? null;
+            if (count($raw) < $size || (is_int($totalPages) && $page + 1 >= $totalPages)) {
+                break;
             }
         }
 
@@ -134,9 +148,6 @@ class TicketmasterClient
             throw new TicketmasterException('Ticketmaster returned an attraction without an id or name', 502);
         }
 
-        $images = collect($attraction['images'] ?? []);
-        $image = $images->where('ratio', '16_9')->sortByDesc('width')->first() ?? $images->first();
-
         $classification = is_array($attraction['classifications'][0] ?? null) ? $attraction['classifications'][0] : [];
 
         return new ArtistData(
@@ -183,12 +194,16 @@ class TicketmasterClient
         }
 
         $start = $event['dates']['start'] ?? [];
-        $startsAt = match (true) {
-            isset($start['dateTime']) => CarbonImmutable::parse($start['dateTime'])->utc(),
-            // Date-only event: stored as UTC midnight, so don't treat it as a real start time.
-            isset($start['localDate']) => CarbonImmutable::parse($start['localDate'], 'UTC'),
-            default => null,
-        };
+        try {
+            $startsAt = match (true) {
+                isset($start['dateTime']) => CarbonImmutable::parse($start['dateTime'])->utc(),
+                // Date-only event: stored as UTC midnight, so don't treat it as a real start time.
+                isset($start['localDate']) => CarbonImmutable::parse($start['localDate'], 'UTC'),
+                default => null,
+            };
+        } catch (\Throwable) {
+            return null; // unparseable date: skip this event rather than fail the whole response
+        }
 
         if ($startsAt === null) {
             return null;

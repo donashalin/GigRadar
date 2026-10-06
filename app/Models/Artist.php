@@ -14,13 +14,15 @@ class Artist extends Model
     protected $attributes = ['seeded' => false];
 
     protected $fillable = ['ticketmaster_id', 'name', 'image_url', 'seeded', 'last_checked_at',
-        'genre_id', 'genre_name', 'sub_genre_id', 'sub_genre_name'];
+        'genre_id', 'genre_name', 'sub_genre_id', 'sub_genre_name',
+        'classifications_checked_at'];
 
     protected function casts(): array
     {
         return [
             'seeded' => 'boolean',
             'last_checked_at' => 'datetime',
+            'classifications_checked_at' => 'datetime',
         ];
     }
 

@@ -5,6 +5,7 @@ use App\Models\DiscoveryEvent;
 use App\Models\User;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 function fakeDiscovery(array $failing = []): void
@@ -105,4 +106,35 @@ it('is scheduled daily at 04:00 Europe/London', function () {
         ->and($event->timezone)->toBe('Europe/London')
         ->and($event->withoutOverlapping)->toBeTrue()
         ->and($event->onOneServer)->toBeTrue();
+});
+
+it('skips one bad event, keeps the rest of the pair and other pairs, and counts the failure', function () {
+    fakeDiscovery();
+    vibeUser(['S1', 'S2']);
+    DiscoveryEvent::saving(function (DiscoveryEvent $e) {
+        if ($e->classification_id === 'S1' && $e->ticketmaster_event_id === 'D5vYZ9disc001') {
+            throw new RuntimeException('bad row');
+        }
+    });
+
+    $this->artisan('gigradar:discover')
+        ->expectsOutput('Fetched 2 classifications, stored 3 new gigs, 1 failures.')
+        ->assertSuccessful();
+
+    expect(DiscoveryEvent::where('classification_id', 'S1')->count())->toBe(1)
+        ->and(DiscoveryEvent::where('classification_id', 'S2')->count())->toBe(2);
+});
+
+it('still prints the summary when pruning fails', function () {
+    fakeDiscovery();
+    vibeUser(['S1']);
+    DB::beforeExecuting(function (string $query) {
+        if (str_starts_with(strtolower($query), 'delete from')) {
+            throw new RuntimeException('prune failed');
+        }
+    });
+
+    $this->artisan('gigradar:discover')
+        ->expectsOutput('Fetched 1 classifications, stored 2 new gigs, 1 failures.')
+        ->assertSuccessful();
 });

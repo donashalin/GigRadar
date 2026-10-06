@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Artist;
 use App\Services\Ticketmaster\TicketmasterClient;
-use App\Services\Ticketmaster\TicketmasterException;
 use Illuminate\Console\Command;
+use Throwable;
 
 class BackfillArtistClassifications extends Command
 {
@@ -15,19 +15,16 @@ class BackfillArtistClassifications extends Command
 
     public function handle(TicketmasterClient $ticketmaster): int
     {
-        $artists = Artist::query()->whereNull('genre_id')->get();
+        $artists = Artist::query()->whereNull('classifications_checked_at')->get();
         $updated = 0;
 
         foreach ($artists as $artist) {
             try {
                 $data = $ticketmaster->attraction($artist->ticketmaster_id);
-            } catch (TicketmasterException $e) {
+            } catch (Throwable $e) {
+                report($e);
                 $this->warn("Could not look up artist {$artist->id}: {$e->getMessage()}");
 
-                continue;
-            }
-
-            if ($data->genreId === null) {
                 continue;
             }
 
@@ -36,8 +33,12 @@ class BackfillArtistClassifications extends Command
                 'genre_name' => $data->genreName,
                 'sub_genre_id' => $data->subGenreId,
                 'sub_genre_name' => $data->subGenreName,
+                'classifications_checked_at' => now(),
             ])->save();
-            $updated++;
+
+            if ($data->genreId !== null) {
+                $updated++;
+            }
         }
 
         $this->info("Updated {$updated} of {$artists->count()} artists.");

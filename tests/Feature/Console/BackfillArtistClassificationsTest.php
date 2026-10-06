@@ -11,13 +11,14 @@ it('fills in classifications for artists without them', function () {
         ->expectsOutput('Updated 1 of 1 artists.')
         ->assertSuccessful();
 
-    expect($artist->fresh()->genre_name)->toBe('Alternative')
+    expect($artist->fresh()->classifications_checked_at)->not->toBeNull()
+        ->and($artist->fresh()->genre_name)->toBe('Alternative')
         ->and($artist->fresh()->sub_genre_id)->toBe('KZazBEonSMnZfZ7vAde');
 });
 
-it('skips artists that already have a genre', function () {
+it('skips artists already checked', function () {
     Http::fake();
-    Artist::factory()->create(['genre_id' => 'G1', 'genre_name' => 'Rock']);
+    Artist::factory()->create(['genre_id' => 'G1', 'genre_name' => 'Rock', 'classifications_checked_at' => now()]);
 
     $this->artisan('gigradar:backfill-artist-classifications')->expectsOutput('Updated 0 of 0 artists.')->assertSuccessful();
 
@@ -38,4 +39,25 @@ it('keeps going when Ticketmaster fails for one artist', function () {
         ->assertSuccessful();
 
     expect($bad->fresh()->genre_id)->toBeNull()->and($good->fresh()->genre_id)->toBe('KnvZfZ7vAvv');
+});
+
+it('marks artists with no classification as checked so they are not retried', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['id' => 'K8A', 'name' => 'Nobody'])]);
+    $artist = Artist::factory()->create(['ticketmaster_id' => 'K8A']);
+
+    $this->artisan('gigradar:backfill-artist-classifications')->expectsOutput('Updated 0 of 1 artists.')->assertSuccessful();
+    expect($artist->fresh()->classifications_checked_at)->not->toBeNull()->and($artist->fresh()->genre_id)->toBeNull();
+
+    Http::fake();
+    $this->artisan('gigradar:backfill-artist-classifications')->expectsOutput('Updated 0 of 0 artists.');
+    Http::assertNothingSent();
+});
+
+it('keeps going on unexpected errors and leaves the artist unchecked', function () {
+    Http::fake(['app.ticketmaster.com/*' => fn () => throw new RuntimeException('boom')]);
+    $artist = Artist::factory()->create();
+
+    $this->artisan('gigradar:backfill-artist-classifications')->expectsOutput('Updated 0 of 1 artists.')->assertSuccessful();
+
+    expect($artist->fresh()->classifications_checked_at)->toBeNull();
 });

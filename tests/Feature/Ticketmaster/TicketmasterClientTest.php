@@ -242,9 +242,11 @@ it('fetches discovery events by classification and country', function () {
 
     Http::assertSent(fn (Request $r) => tmQuery($r)['classificationId'] === 'KZazBEonSMnZfZ7vAde'
         && tmQuery($r)['countryCode'] === 'GB'
-        && tmQuery($r)['classificationName'] === 'music'
+        && tmQuery($r)['segmentId'] === 'KZFzniwnSyZfZ7v7nJ'
+        && ! isset(tmQuery($r)['classificationName'])
         && tmQuery($r)['sort'] === 'date,asc'
-        && tmQuery($r)['size'] === '200');
+        && tmQuery($r)['size'] === '200'
+        && tmQuery($r)['page'] === '0');
 });
 
 it('drops unsafe attraction image URLs and malformed attractions in discovery events', function () {
@@ -273,4 +275,49 @@ it('redacts the API key when a discovery request cannot connect', function () {
     } catch (TicketmasterException $e) {
         expect($e->getMessage())->not->toContain('test-key')->and($e->getPrevious())->toBeNull();
     }
+});
+
+it('pages through discovery events up to three pages', function () {
+    $page = fn (int $n) => ['_embedded' => ['events' => array_map(fn ($i) => [
+        'id' => "E{$n}-{$i}", 'name' => 'x', 'dates' => ['start' => ['localDate' => '2027-01-01']],
+        '_embedded' => ['attractions' => [['id' => 'A', 'name' => 'A']]],
+    ], range(1, 200))], 'page' => ['size' => 200, 'totalPages' => 10, 'number' => $n]];
+    Http::fake(['app.ticketmaster.com/*' => Http::sequence()->push($page(0))->push($page(1))->push($page(2))->push($page(3))]);
+
+    $events = app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+
+    expect($events)->toHaveCount(600);
+    Http::assertSentCount(3);
+});
+
+it('stops paging at totalPages or a short page', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(tmFixture('discovery-events'))]);
+    app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+    Http::assertSentCount(1);
+
+    $full = ['_embedded' => ['events' => array_map(fn ($i) => [
+        'id' => "E{$i}", 'name' => 'x', 'dates' => ['start' => ['localDate' => '2027-01-01']],
+    ], range(1, 200))], 'page' => ['totalPages' => 1]];
+    Http::fake(['app.ticketmaster.com/*' => Http::response($full)]);
+    app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+    Http::assertSentCount(1);
+});
+
+it('skips events with an unparseable date', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [
+        ['id' => 'E1', 'name' => 'Bad', 'dates' => ['start' => ['dateTime' => 'not a date']], '_embedded' => ['attractions' => [['id' => 'A', 'name' => 'A']]]],
+        ['id' => 'E2', 'name' => 'Good', 'dates' => ['start' => ['localDate' => '2027-01-01']], '_embedded' => ['attractions' => [['id' => 'A', 'name' => 'A']]]],
+    ]]])]);
+
+    $events = app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+
+    expect($events)->toHaveCount(1)->and($events[0]->concert->id)->toBe('E2');
+});
+
+it('skips unparseable dates in upcoming events too', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [
+        ['id' => 'E1', 'name' => 'Bad', 'dates' => ['start' => ['localDate' => '2027-13-45']]],
+    ]]])]);
+
+    expect(app(TicketmasterClient::class)->upcomingEvents('A'))->toBe([]);
 });
