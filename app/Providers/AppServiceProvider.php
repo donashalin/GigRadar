@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Geocoding\Geocoder;
 use App\Services\Ticketmaster\TicketmasterClient;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
             (string) config('services.ticketmaster.key'),
             (int) config('services.ticketmaster.throttle_ms'),
         ));
+        $this->app->singleton(Geocoder::class, fn () => new Geocoder((string) config('services.nominatim.user_agent')));
     }
 
     /**

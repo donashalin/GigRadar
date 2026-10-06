@@ -49,3 +49,8 @@ function tmQuery(Illuminate\Http\Client\Request $request): array
 
     return $query;
 }
+
+function nominatimFixture(string $name): array
+{
+    return json_decode(file_get_contents(__DIR__."/Fixtures/nominatim/{$name}.json"), true);
+}

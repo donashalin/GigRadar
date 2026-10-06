@@ -40,4 +40,8 @@ return [
         'throttle_ms' => (int) env('TICKETMASTER_THROTTLE_MS', 250),
     ],
 
+    'nominatim' => [
+        'user_agent' => env('NOMINATIM_USER_AGENT', 'GigRadar/1.0 (+https://github.com/donashalin/GigRadar)'),
+    ],
+
 ];
