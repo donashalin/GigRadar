@@ -44,7 +44,7 @@ const shortDate: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric'
                 <h2 id="upcoming-near-you" class="text-lg font-semibold">Upcoming near you</h2>
 
                 <p v-if="areaLabel === null" class="mt-2 text-sm text-neutral-500">
-                    <Link href="/settings/alerts" class="font-medium text-violet-600 dark:text-violet-400">{{
+                    <Link href="/settings/location" class="font-medium text-violet-600 dark:text-violet-400">{{
                         hasHomeLocation ? 'Re-pick your home location' : 'Set your home location'
                     }}</Link>
                     to see gigs near you.
