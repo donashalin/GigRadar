@@ -2,9 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Artist;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/** @extends Factory<\App\Models\Artist> */
+/** @extends Factory<Artist> */
 class ArtistFactory extends Factory
 {
     public function definition(): array

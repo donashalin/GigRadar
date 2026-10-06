@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,8 +15,8 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -43,7 +47,7 @@ function tmFixture(string $name): array
 }
 
 /** Query-string parameters of a faked HTTP request, as strings. */
-function tmQuery(Illuminate\Http\Client\Request $request): array
+function tmQuery(Request $request): array
 {
     parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
 

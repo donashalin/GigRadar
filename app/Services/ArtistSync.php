@@ -6,6 +6,7 @@ use App\Models\Artist;
 use App\Models\Concert;
 use App\Services\Ticketmaster\ConcertData;
 use App\Services\Ticketmaster\TicketmasterClient;
+use App\Services\Ticketmaster\TicketmasterException;
 use App\Support\ConcertDiffer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class ArtistSync
      *                                  alerts from `alerted_at IS NULL` on seeded artists, NOT from
      *                                  this return value.
      *
-     * @throws \App\Services\Ticketmaster\TicketmasterException
+     * @throws TicketmasterException
      */
     public function syncEvents(Artist $artist): Collection
     {

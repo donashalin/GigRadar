@@ -2,9 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\DiscoveryEvent;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/** @extends Factory<\App\Models\DiscoveryEvent> */
+/** @extends Factory<DiscoveryEvent> */
 class DiscoveryEventFactory extends Factory
 {
     public function definition(): array

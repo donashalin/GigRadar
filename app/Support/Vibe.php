@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Artist;
 use Illuminate\Support\Collection;
 
 /** Turns a user's followed artists into weighted Ticketmaster classification buckets. */
@@ -10,7 +11,7 @@ final class Vibe
     private const CATCH_ALL = ['undefined', 'other'];
 
     /**
-     * @param  Collection<int, \App\Models\Artist>  $artists
+     * @param  Collection<int, Artist>  $artists
      * @return list<array{id: string, name: string, weight: int, artists: list<string>}>
      */
     public static function for(Collection $artists): array

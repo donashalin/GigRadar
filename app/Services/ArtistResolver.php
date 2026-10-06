@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Models\Artist;
 use App\Services\Ticketmaster\TicketmasterClient;
+use App\Services\Ticketmaster\TicketmasterException;
 
 class ArtistResolver
 {
     public function __construct(private readonly TicketmasterClient $ticketmaster) {}
 
-    /** @throws \App\Services\Ticketmaster\TicketmasterException */
+    /** @throws TicketmasterException */
     public function resolve(string $ticketmasterId): Artist
     {
         $artist = Artist::firstWhere('ticketmaster_id', $ticketmasterId);

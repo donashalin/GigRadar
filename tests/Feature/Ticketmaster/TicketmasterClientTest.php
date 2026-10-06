@@ -2,6 +2,7 @@
 
 use App\Services\Ticketmaster\ArtistData;
 use App\Services\Ticketmaster\ConcertData;
+use App\Services\Ticketmaster\DiscoveryEventData;
 use App\Services\Ticketmaster\TicketmasterClient;
 use App\Services\Ticketmaster\TicketmasterException;
 use Illuminate\Http\Client\ConnectionException;
@@ -231,7 +232,7 @@ it('fetches discovery events by classification and country', function () {
     $events = app(TicketmasterClient::class)->eventsByClassification('KZazBEonSMnZfZ7vAde', 'GB');
 
     expect($events)->toHaveCount(2)
-        ->and($events[0])->toBeInstanceOf(App\Services\Ticketmaster\DiscoveryEventData::class)
+        ->and($events[0])->toBeInstanceOf(DiscoveryEventData::class)
         ->and($events[0]->attractionId)->toBe('K8vZShame01')
         ->and($events[0]->attractionName)->toBe('Shame')
         ->and($events[0]->attractionImageUrl)->toBe('https://s1.ticketm.net/dam/a/shame-large.jpg')
