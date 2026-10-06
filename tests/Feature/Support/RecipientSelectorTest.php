@@ -35,7 +35,7 @@ it('gives an everywhere follower all concerts in order', function () {
     $result = selectFor([$this->manchester, $this->leicester]);
 
     expect(array_keys($result))->toBe([$user->id])
-        ->and($result[$user->id]->pluck("id")->all())->toBe([$this->manchester->id, $this->leicester->id]);
+        ->and($result[$user->id]->pluck('id')->all())->toBe([$this->manchester->id, $this->leicester->id]);
 });
 
 it('filters a radius-mode nearby follower by distance', function () {
@@ -43,7 +43,7 @@ it('filters a radius-mode nearby follower by distance', function () {
 
     $result = selectFor([$this->leicester, $this->manchester]);
 
-    expect($result[$user->id]->pluck("id")->all())->toBe([$this->leicester->id]);
+    expect($result[$user->id]->pluck('id')->all())->toBe([$this->leicester->id]);
 });
 
 it('filters a country-mode nearby follower by country', function () {
@@ -53,7 +53,7 @@ it('filters a country-mode nearby follower by country', function () {
 
     $result = selectFor([$glasgow, $dublin]);
 
-    expect($result[$user->id]->pluck("id")->all())->toBe([$glasgow->id]);
+    expect($result[$user->id]->pluck('id')->all())->toBe([$glasgow->id]);
 });
 
 it('alerts a nearby follower with no home location about everything', function () {
@@ -66,14 +66,14 @@ it('includes concerts with an unknown country in country mode', function () {
     $user = addFollower('nearby', ['nearby_mode' => 'country', 'home_country_code' => 'GB']);
     $unknown = makePending(['country' => '']);
 
-    expect(selectFor([$unknown])[$user->id]->pluck("id")->all())->toBe([$unknown->id]);
+    expect(selectFor([$unknown])[$user->id]->pluck('id')->all())->toBe([$unknown->id]);
 });
 
 it('never includes cancelled concerts', function () {
     $user = addFollower('everywhere');
     $cancelled = makePending(['status' => 'cancelled']);
 
-    expect(selectFor([$cancelled, $this->leicester])[$user->id]->pluck("id")->all())->toBe([$this->leicester->id]);
+    expect(selectFor([$cancelled, $this->leicester])[$user->id]->pluck('id')->all())->toBe([$this->leicester->id]);
 });
 
 it('omits users with nothing to receive', function () {

@@ -4,12 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Artist;
 use App\Models\Concert;
-use App\Models\User;
 use App\Notifications\NewTourDates;
 use App\Services\ArtistSync;
 use App\Support\RecipientSelector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CheckDates extends Command
@@ -24,12 +24,13 @@ class CheckDates extends Command
 
         foreach (Artist::has('followers')->cursor() as $artist) {
             $checked++;
+            $artistFailed = false;
 
             try {
                 $sync->syncEvents($artist);
             } catch (Throwable $e) {
                 report($e);
-                $failed++;
+                $artistFailed = true;
                 // still alert on concerts already pending from earlier page-view syncs
             }
 
@@ -37,12 +38,20 @@ class CheckDates extends Command
                 $alertsSent += $this->alertFollowers($artist->fresh());
             } catch (Throwable $e) {
                 report($e);
-                $failed++;
+                $artistFailed = true;
             }
+
+            $failed += $artistFailed ? 1 : 0;
         }
 
-        $this->prunePastConcerts();
-        $this->info("Checked {$checked} artists, sent {$alertsSent} alerts, {$failed} failures.");
+        try {
+            $this->prunePastConcerts();
+        } catch (Throwable $e) {
+            report($e);
+            $failed++;
+        }
+
+        $this->info("Checked {$checked} ".Str::plural('artist', $checked).", sent {$alertsSent} ".Str::plural('alert', $alertsSent).", {$failed} ".Str::plural('failure', $failed).'.');
 
         return self::SUCCESS;
     }
@@ -57,16 +66,23 @@ class CheckDates extends Command
         return DB::transaction(function () use ($artist) {
             $pending = $artist->concerts()->whereNull('alerted_at')->lockForUpdate()->get();
 
-            $alertable = $pending
+            $alertable = $artist->concerts()
+                ->whereKey($pending->modelKeys())
                 ->where('status', '!=', 'cancelled')
-                ->filter(fn (Concert $c) => $this->isUpcoming($c))
-                ->sortBy(fn (Concert $c) => ($c->local_date ?? $c->starts_at)->format('Y-m-d H:i'))
-                ->values();
+                ->upcoming()
+                ->get();
+
+            $followers = $artist->followers()->get()->keyBy('id');
 
             $sent = 0;
-            foreach (RecipientSelector::select($alertable, $artist->followers()->get()) as $userId => $concerts) {
-                User::find($userId)?->notify(new NewTourDates($artist, $concerts));
-                $sent++;
+            foreach (RecipientSelector::select($alertable, $followers) as $userId => $concerts) {
+                $user = $followers[$userId];
+                $notification = new NewTourDates($artist, $concerts);
+                $user->notify($notification);
+
+                if ($notification->via($user) !== []) {
+                    $sent++;
+                }
             }
 
             if ($pending->isNotEmpty()) {
@@ -75,14 +91,6 @@ class CheckDates extends Command
 
             return $sent;
         });
-    }
-
-    /** Same rule as Concert::upcoming(). */
-    private function isUpcoming(Concert $concert): bool
-    {
-        return $concert->local_date !== null
-            ? $concert->local_date->toDateString() >= today()->toDateString()
-            : $concert->starts_at->gte(now()->startOfDay());
     }
 
     private function prunePastConcerts(): void

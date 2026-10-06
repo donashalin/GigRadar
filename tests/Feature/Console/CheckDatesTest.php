@@ -4,6 +4,8 @@ use App\Models\Artist;
 use App\Models\Concert;
 use App\Models\User;
 use App\Notifications\NewTourDates;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Notifications\Dispatcher;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -115,7 +117,7 @@ it('keeps going when Ticketmaster fails for one artist and still alerts its alre
     [, $userB] = followedArtist('K8B');
     $pending = Concert::factory()->for($a)->create(['from_seed' => false, 'alerted_at' => null]);
 
-    $this->artisan('gigradar:check-dates')->expectsOutputToContain('1 failures')->assertSuccessful();
+    $this->artisan('gigradar:check-dates')->expectsOutputToContain('1 failure')->assertSuccessful();
 
     Notification::assertSentTo($userB, NewTourDates::class);
     Notification::assertSentTo($userA, NewTourDates::class, fn (NewTourDates $n) => $n->concerts->pluck('id')->all() === [$pending->id]);
@@ -147,11 +149,53 @@ it('prunes past concerts and reports a summary', function () {
 });
 
 it('is scheduled every six hours', function () {
-    $event = collect(app(Illuminate\Console\Scheduling\Schedule::class)->events())
+    $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command, 'gigradar:check-dates'));
 
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('0 */6 * * *')
+        ->and($event->timezone)->toBe('Europe/London')
         ->and($event->withoutOverlapping)->toBeTrue()
         ->and($event->onOneServer)->toBeTrue();
+});
+
+it('stamps a pending past concert without alerting', function () {
+    fakeTicketmaster(payload: tmFixture('empty'));
+    [$artist] = followedArtist('K8A');
+    $past = Concert::factory()->for($artist)->create(['local_date' => today()->subDay()->toDateString(), 'starts_at' => now()->subDay(), 'alerted_at' => null]);
+
+    $this->artisan('gigradar:check-dates');
+
+    Notification::assertNothingSent();
+    // Pruned at the end of the run, so only the absence of an alert is observable here.
+    expect(Concert::find($past->id))->toBeNull();
+});
+
+it('leaves concerts unstamped when alerting throws', function () {
+    fakeTicketmaster(payload: tmFixture('empty'));
+    [$artist] = followedArtist('K8A');
+    $pending = Concert::factory()->for($artist)->create(['alerted_at' => null]);
+    app()->instance(Dispatcher::class, new class implements Dispatcher
+    {
+        public function send($notifiables, $notification)
+        {
+            throw new RuntimeException('boom');
+        }
+
+        public function sendNow($notifiables, $notification, ?array $channels = null)
+        {
+            throw new RuntimeException('boom');
+        }
+    });
+
+    $this->artisan('gigradar:check-dates')->expectsOutputToContain('1 failure')->assertSuccessful();
+
+    expect($pending->fresh()->alerted_at)->toBeNull();
+});
+
+it('counts only alerts that have a channel', function () {
+    fakeTicketmaster();
+    followedArtist('K8A', user: ['notify_email' => false]);
+
+    $this->artisan('gigradar:check-dates')->expectsOutputToContain('sent 0 alerts');
 });

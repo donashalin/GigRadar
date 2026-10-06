@@ -18,10 +18,19 @@ class NewTourDates extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    public $tries = 3;
+
+    public $backoff = [60, 300];
+
     /** @param Collection<int, Concert> $concerts */
     public function __construct(public Artist $artist, public Collection $concerts)
     {
         $this->afterCommit();
+    }
+
+    public function shouldSend(User $user, string $channel): bool
+    {
+        return $this->concerts->isNotEmpty();
     }
 
     /** @return list<string> */
@@ -44,12 +53,13 @@ class NewTourDates extends Notification implements ShouldQueue
     {
         $mail = (new MailMessage)
             ->subject("{$this->artist->name} announced new dates")
-            ->greeting('')
+            ->greeting("{$this->artist->name} announced new dates")
             ->line(AlertSummary::for($this->concerts));
 
         foreach ($this->concerts->take(5) as $concert) {
             $date = ($concert->local_date ?? $concert->starts_at)->format('j M Y');
-            $mail->line("{$date} — {$concert->venue_name}, {$concert->city}");
+            $place = collect([$concert->venue_name, $concert->city])->filter()->implode(', ');
+            $mail->line("{$date} — {$place}");
         }
 
         return $mail

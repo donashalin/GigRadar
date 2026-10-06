@@ -8,4 +8,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('gigradar:check-dates')->everySixHours()->withoutOverlapping()->onOneServer();
+Schedule::command('gigradar:check-dates')->everySixHours()->withoutOverlapping()->onOneServer()->timezone('Europe/London');

@@ -38,7 +38,8 @@ it('builds the mail', function () {
     $mail = $notification->toMail(User::factory()->create());
 
     expect($mail->subject)->toBe('Fontaines D.C. announced new dates')
-        ->and($mail->greeting)->toBe('')
+        ->and($mail->greeting)->toBe('Fontaines D.C. announced new dates')
+        ->and($mail->actionUrl)->toStartWith(rtrim(config('app.url'), '/').'/')
         ->and($mail->introLines[0])->toBe('7 new dates, including Manchester – '.now()->addMonth()->format('j M'))
         ->and($mail->introLines)->toHaveCount(6)
         ->and($mail->introLines[1])->toBe(now()->addMonth()->format('j M Y').' — Apollo, Manchester')
@@ -64,4 +65,17 @@ it('is queued after commit', function () {
 
     expect($notification)->toBeInstanceOf(ShouldQueue::class)
         ->and($notification->afterCommit)->toBeTrue();
+});
+
+it('retries a few times with backoff', function () {
+    $notification = tourNotification();
+
+    expect($notification->tries)->toBe(3)
+        ->and($notification->backoff)->toBe([60, 300]);
+});
+
+it('does not send when there are no concerts', function () {
+    $notification = new NewTourDates(Artist::factory()->create(), collect());
+
+    expect($notification->shouldSend(User::factory()->create(), 'mail'))->toBeFalse();
 });

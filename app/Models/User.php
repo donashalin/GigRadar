@@ -64,7 +64,9 @@ class User extends Authenticatable implements MustVerifyEmail
     protected static function booted(): void
     {
         // Push subscriptions are a morph relation without a foreign key, so cascade by hand.
-        static::deleting(fn (User $user) => $user->pushSubscriptions()->delete());
+        static::deleting(function (User $user) {
+            $user->pushSubscriptions()->delete();
+        });
     }
 
     public function artists(): BelongsToMany
