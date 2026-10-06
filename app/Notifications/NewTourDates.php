@@ -5,18 +5,18 @@ namespace App\Notifications;
 use App\Models\Artist;
 use App\Models\Concert;
 use App\Models\User;
+use App\Notifications\Concerns\RoutesToAlertChannels;
 use App\Support\AlertSummary;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Collection;
-use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
 class NewTourDates extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RoutesToAlertChannels;
 
     public $tries = 3;
 
@@ -31,22 +31,6 @@ class NewTourDates extends Notification implements ShouldQueue
     public function shouldSend(User $user, string $channel): bool
     {
         return $this->concerts->isNotEmpty();
-    }
-
-    /** @return list<string> */
-    public function via(User $user): array
-    {
-        $channels = [];
-
-        if ($user->notify_email) {
-            $channels[] = 'mail';
-        }
-
-        if ($user->pushSubscriptions()->exists()) {
-            $channels[] = WebPushChannel::class;
-        }
-
-        return $channels;
     }
 
     public function toMail(User $user): MailMessage

@@ -3,29 +3,15 @@
 namespace App\Notifications;
 
 use App\Models\User;
+use App\Notifications\Concerns\RoutesToAlertChannels;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /** Sent immediately (notifyNow) so a user can check their alert channels work. */
 class TestAlert extends Notification
 {
-    /** @return list<string> Same channel rules as NewTourDates. */
-    public function via(User $user): array
-    {
-        $channels = [];
-
-        if ($user->notify_email) {
-            $channels[] = 'mail';
-        }
-
-        if ($user->pushSubscriptions()->exists()) {
-            $channels[] = WebPushChannel::class;
-        }
-
-        return $channels;
-    }
+    use RoutesToAlertChannels;
 
     public function toMail(User $user): MailMessage
     {

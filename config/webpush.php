@@ -16,6 +16,17 @@ return [
     ],
 
     /**
+     * Hosts a push subscription endpoint may point at (`*.` matches subdomains only).
+     */
+    'allowed_hosts' => [
+        'fcm.googleapis.com',
+        '*.push.apple.com',
+        '*.push.services.mozilla.com',
+        'updates.push.services.mozilla.com',
+        '*.notify.windows.com',
+    ],
+
+    /**
      * This is model that will be used to for push subscriptions.
      */
     'model' => PushSubscription::class,

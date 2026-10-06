@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Notifications\TestAlert;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class TestAlertController extends Controller
 {
@@ -18,7 +19,13 @@ class TestAlertController extends Controller
             return back()->with('error', 'Turn on email alerts or push on this device first.');
         }
 
-        $user->notifyNow($notification);
+        try {
+            $user->notifyNow($notification);
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->with('error', "Couldn't send the test alert. Try again later.");
+        }
 
         return back()->with('success', 'Test alert sent.');
     }

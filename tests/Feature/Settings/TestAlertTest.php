@@ -2,6 +2,8 @@
 
 use App\Models\User;
 use App\Notifications\TestAlert;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 
@@ -61,4 +63,17 @@ it('throttles after 3 per minute', function () {
         $this->actingAs($user)->post('/settings/test-alert')->assertRedirect();
     }
     $this->actingAs($user)->post('/settings/test-alert')->assertStatus(429);
+});
+
+it('reports a delivery failure as an error flash instead of a 500', function () {
+    $user = User::factory()->create(['notify_email' => true]);
+    Mail::shouldReceive('mailer')->andThrow(new RuntimeException('smtp down'));
+    $handler = Mockery::mock(ExceptionHandler::class)->shouldIgnoreMissing();
+    $handler->shouldReceive('shouldReport')->andReturn(true);
+    $handler->shouldReceive('report')->once();
+    app()->instance(ExceptionHandler::class, $handler);
+
+    $this->actingAs($user)->post('/settings/test-alert')
+        ->assertStatus(302)
+        ->assertSessionHas('error', "Couldn't send the test alert. Try again later.");
 });

@@ -6,7 +6,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 function subPayload(array $override = []): array
 {
     return array_replace_recursive([
-        'endpoint' => 'https://push.example/abc',
+        'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc',
         'keys' => ['p256dh' => 'pub-key', 'auth' => 'auth-token'],
         'contentEncoding' => 'aes128gcm',
     ], $override);
@@ -14,7 +14,7 @@ function subPayload(array $override = []): array
 
 it('redirects guests', function () {
     $this->post('/push-subscriptions', subPayload())->assertRedirect('/login');
-    $this->delete('/push-subscriptions', ['endpoint' => 'https://push.example/abc'])->assertRedirect('/login');
+    $this->delete('/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc'])->assertRedirect('/login');
 });
 
 it('stores a subscription for the current user', function () {
@@ -24,7 +24,7 @@ it('stores a subscription for the current user', function () {
 
     expect($user->pushSubscriptions()->count())->toBe(1);
     $sub = $user->pushSubscriptions()->first();
-    expect($sub->endpoint)->toBe('https://push.example/abc')
+    expect($sub->endpoint)->toBe('https://fcm.googleapis.com/fcm/send/abc')
         ->and($sub->public_key)->toBe('pub-key')
         ->and($sub->auth_token)->toBe('auth-token');
 });
@@ -58,14 +58,14 @@ it('moves a subscription to whichever user registers the endpoint last', functio
 
 it('deletes only the current users matching subscription', function () {
     [$a, $b] = User::factory()->count(2)->create();
-    $a->updatePushSubscription('https://push.example/a', 'k', 't', 'aes128gcm');
-    $a->updatePushSubscription('https://push.example/keep', 'k', 't', 'aes128gcm');
-    $b->updatePushSubscription('https://push.example/b', 'k', 't', 'aes128gcm');
+    $a->updatePushSubscription('https://fcm.googleapis.com/fcm/send/a', 'k', 't', 'aes128gcm');
+    $a->updatePushSubscription('https://fcm.googleapis.com/fcm/send/keep', 'k', 't', 'aes128gcm');
+    $b->updatePushSubscription('https://fcm.googleapis.com/fcm/send/b', 'k', 't', 'aes128gcm');
 
-    $this->actingAs($a)->delete('/push-subscriptions', ['endpoint' => 'https://push.example/a'])->assertRedirect();
-    $this->actingAs($a)->delete('/push-subscriptions', ['endpoint' => 'https://push.example/b'])->assertRedirect();
+    $this->actingAs($a)->delete('/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/a'])->assertRedirect();
+    $this->actingAs($a)->delete('/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/b'])->assertRedirect();
 
-    expect($a->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://push.example/keep'])
+    expect($a->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://fcm.googleapis.com/fcm/send/keep'])
         ->and($b->pushSubscriptions()->count())->toBe(1);
 });
 
@@ -77,9 +77,17 @@ it('validates the subscription payload', function (array $override, string $fiel
 })->with([
     'http endpoint' => [['endpoint' => 'http://push.example/abc'], 'endpoint'],
     'not a url' => [['endpoint' => 'nope'], 'endpoint'],
-    'too long' => [['endpoint' => 'https://push.example/'.str_repeat('a', 500)], 'endpoint'],
+    'too long' => [['endpoint' => 'https://fcm.googleapis.com/'.str_repeat('a', 500)], 'endpoint'],
     'missing p256dh' => [['keys' => ['p256dh' => '']], 'keys.p256dh'],
     'missing auth' => [['keys' => ['auth' => '']], 'keys.auth'],
+    'junk p256dh' => [['keys' => ['p256dh' => 'a b<script>']], 'keys.p256dh'],
+    'junk auth' => [['keys' => ['auth' => 'x=y']], 'keys.auth'],
+    'internal host' => [['endpoint' => 'https://internal.example/x'], 'endpoint'],
+    'localhost' => [['endpoint' => 'https://localhost/x'], 'endpoint'],
+    'private ip' => [['endpoint' => 'https://10.0.0.1/x'], 'endpoint'],
+    'suffix attack' => [['endpoint' => 'https://evilpush.apple.com.attacker.io/x'], 'endpoint'],
+    'bare wildcard domain' => [['endpoint' => 'https://push.apple.com/x'], 'endpoint'],
+    'prefix attack' => [['endpoint' => 'https://evilpush.apple.com/x'], 'endpoint'],
     'bad encoding' => [['contentEncoding' => 'rot13'], 'contentEncoding'],
 ]);
 
@@ -100,4 +108,24 @@ it('shares the VAPID public key and success flash', function () {
 
     $this->actingAs(User::factory()->create())->withSession(['success' => 'Yay'])->get('/settings')
         ->assertInertia(fn (Assert $page) => $page->where('vapidPublicKey', 'BPublicKey')->where('flash.success', 'Yay'));
+});
+
+it('accepts endpoints from known push services', function (string $endpoint) {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/push-subscriptions', subPayload(['endpoint' => $endpoint]))->assertSessionHasNoErrors();
+    expect($user->pushSubscriptions()->count())->toBe(1);
+})->with([
+    'fcm' => 'https://fcm.googleapis.com/fcm/send/abc',
+    'apple' => 'https://web.push.apple.com/abc',
+    'mozilla' => 'https://updates.push.services.mozilla.com/wpush/v2/abc',
+    'mozilla wildcard' => 'https://eu.push.services.mozilla.com/abc',
+    'windows' => 'https://db5.notify.windows.com/?token=abc',
+]);
+
+it('requires a verified email for push routes', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)->post('/push-subscriptions', subPayload())->assertRedirect(route('verification.notice'));
+    $this->actingAs($user)->delete('/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/x'])->assertRedirect(route('verification.notice'));
 });
