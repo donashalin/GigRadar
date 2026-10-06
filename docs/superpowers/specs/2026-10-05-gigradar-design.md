@@ -54,7 +54,7 @@ Mobile-first layout with a fixed bottom tab bar: **My Artists**, **Search**, **S
 1. **Welcome / Login / Register / Forgot password** — starter kit pages. Unverified users are redirected to the verify-email notice.
 2. **Search** — text input, 300 ms debounce, minimum 2 characters; results show image, name, and Follow button.
 3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed; "Get tickets" opens `ticket_url` in a new tab). Follow/Unfollow button. Alert scope toggle (`Everywhere` / `Near me`), shown only when following. Viewing updates the follow's `last_seen_at`.
-4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any event's `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's radius (hidden if no home location).
+4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any upcoming concert has `from_seed = false` and `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's radius (hidden if no home location).
 5. **Settings**
    - Home location: type a city (Nominatim lookup) or "Use my current location" (Geolocation API).
    - Radius: 25 / 50 / 100 / 250 miles (default 50).
@@ -97,6 +97,8 @@ concerts                -- model Concert (avoids clashing with Laravel's Event f
   status enum('onsale','offsale','cancelled','postponed','rescheduled'),
   first_seen_at timestamp
   alerted_at timestamp null       -- null = followers not yet alerted; set on seeding and after alerting
+  from_seed boolean default false -- stored while seeding an artist; never shown as "New"
+  local_date date null            -- venue-local date for display and "upcoming" filtering
   timestamps
   unique(artist_id, ticketmaster_id)   -- one Ticketmaster event can list several artists
   index(artist_id, starts_at)
