@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Artist;
 use App\Models\Concert;
+use App\Support\CountryName;
 use App\Support\NearbyArea;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -60,11 +61,7 @@ class MyArtistsController extends Controller
             return "within {$area->radiusMiles} miles";
         }
 
-        $code = (string) $area->homeCountryCode;
-        $name = class_exists(\Locale::class) ? \Locale::getDisplayRegion('-'.$code, 'en') : $code;
-        if ($name === '' || $name === 'Unknown Region' || strcasecmp($name, $code) === 0) {
-            $name = $code;
-        }
+        $name = CountryName::for($area->homeCountryCode) ?? (string) $area->homeCountryCode;
 
         return 'in '.$name;
     }

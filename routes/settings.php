@@ -3,12 +3,11 @@
 use App\Http\Controllers\Settings\AlertSettingsController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('auth')->group(function () {
-    Route::redirect('settings', 'settings/alerts');
-
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -22,7 +21,10 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('settings/alerts', [AlertSettingsController::class, 'edit'])->name('alerts.edit');
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings');
+    Route::get('settings/location', [AlertSettingsController::class, 'location'])->name('settings.location');
+    Route::get('settings/near-me', [AlertSettingsController::class, 'nearMe'])->name('settings.near-me');
+    Route::redirect('settings/alerts', '/settings', 301);
     Route::patch('settings/alerts', [AlertSettingsController::class, 'update'])->name('alerts.update');
     Route::get('settings/alerts/places', [AlertSettingsController::class, 'places'])
         ->middleware('throttle:geo-search')->name('alerts.places');

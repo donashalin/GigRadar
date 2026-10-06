@@ -5,28 +5,32 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
-it('sends /settings to the alert settings page', function () {
-    $this->actingAs(User::factory()->create())->get('/settings')->assertRedirect('/settings/alerts');
+it('redirects the old alerts page to the settings list', function () {
+    $this->actingAs(User::factory()->create())->get('/settings/alerts')->assertRedirect('/settings')->assertStatus(301);
 });
 
-it('requires a verified user', function () {
-    $this->get('/settings/alerts')->assertRedirect('/login');
-    $this->actingAs(User::factory()->unverified()->create())
-        ->get('/settings/alerts')->assertRedirect(route('verification.notice'));
+it('requires a verified user for the alert sub-pages', function (string $url) {
+    $this->get($url)->assertRedirect('/login');
+    $this->actingAs(User::factory()->unverified()->create())->get($url)->assertRedirect(route('verification.notice'));
+})->with(['/settings', '/settings/location', '/settings/near-me']);
+
+it('shows the home location page', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6362, 'home_lng' => -1.1331, 'home_country_code' => 'GB']);
+
+    $this->actingAs($user)->get('/settings/location')
+        ->assertInertia(fn (Assert $page) => $page->component('settings/Location')
+            ->where('homeLocationName', 'Leicester, Leicestershire, United Kingdom')
+            ->where('homeCountryCode', 'GB'));
 });
 
-it('shows the current alert settings', function () {
-    $user = User::factory()->create(['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6362, 'home_lng' => -1.1331, 'radius_miles' => 100, 'nearby_mode' => 'radius', 'home_country_code' => 'GB', 'notify_email' => false]);
+it('shows the near me page', function () {
+    $user = User::factory()->create(['radius_miles' => 100, 'nearby_mode' => 'radius', 'home_country_code' => 'GB']);
 
-    $this->actingAs($user)->get('/settings/alerts')
-        ->assertInertia(fn (Assert $page) => $page->component('settings/Alerts')
-            ->where('settings.homeLocationName', 'Leicester, Leicestershire, United Kingdom')
-            ->where('settings.homeLat', 52.6362)
-            ->where('settings.homeLng', -1.1331)
-            ->where('settings.radiusMiles', 100)
-            ->where('settings.nearbyMode', 'radius')
-            ->where('settings.homeCountryCode', 'GB')
-            ->where('settings.notifyEmail', false)
+    $this->actingAs($user)->get('/settings/near-me')
+        ->assertInertia(fn (Assert $page) => $page->component('settings/NearMe')
+            ->where('nearbyMode', 'radius')
+            ->where('radiusMiles', 100)
+            ->where('homeCountryCode', 'GB')
             ->where('radiusOptions', [25, 50, 100, 250]));
 });
 
@@ -41,7 +45,7 @@ it('saves alert settings', function () {
         'radius_miles' => 25,
         'nearby_mode' => 'radius',
         'notify_email' => false,
-    ])->assertRedirect('/settings/alerts')->assertSessionHasNoErrors();
+    ])->assertSessionHasNoErrors();
 
     $user->refresh();
     expect($user->home_location_name)->toBe('Leicester, Leicestershire, United Kingdom')
@@ -75,11 +79,10 @@ it('validates alert settings', function (array $input, string $errorField) {
     'name without coordinates' => [['home_lat' => null, 'home_lng' => null], 'home_lat'],
     'coordinates without name' => [['home_location_name' => null], 'home_location_name'],
     'unknown nearby mode' => [['nearby_mode' => 'planet'], 'nearby_mode'],
-    'nearby mode missing' => [['nearby_mode' => null], 'nearby_mode'],
     'country code too long' => [['home_country_code' => 'GBR'], 'home_country_code'],
     'country code too short' => [['home_country_code' => 'G'], 'home_country_code'],
     'country code not letters' => [['home_country_code' => 'G1'], 'home_country_code'],
-    'email flag missing' => [['notify_email' => null], 'notify_email'],
+    'email flag not boolean' => [['notify_email' => 'maybe'], 'notify_email'],
 ]);
 
 it('searches places as JSON', function () {
@@ -237,4 +240,60 @@ it('forces the country code to null when the location is cleared', function () {
     ])->assertSessionHasNoErrors();
 
     expect($user->fresh()->home_country_code)->toBeNull();
+});
+
+it('saves only the email flag from a partial patch', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB', 'nearby_mode' => 'radius', 'radius_miles' => 100]);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['notify_email' => false])->assertSessionHasNoErrors();
+
+    $user->refresh();
+    expect($user->notify_email)->toBeFalse()
+        ->and($user->home_location_name)->toBe('Leicester')->and($user->home_country_code)->toBe('GB')
+        ->and($user->nearby_mode)->toBe('radius')->and($user->radius_miles)->toBe(100);
+});
+
+it('saves only the nearby mode and radius from a partial patch', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB', 'nearby_mode' => 'country', 'notify_email' => true]);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['nearby_mode' => 'radius', 'radius_miles' => 100])->assertSessionHasNoErrors();
+
+    $user->refresh();
+    expect($user->nearby_mode)->toBe('radius')->and($user->radius_miles)->toBe(100)
+        ->and($user->home_lat)->toBe(52.6)->and($user->home_country_code)->toBe('GB')->and($user->notify_email)->toBeTrue();
+});
+
+it('saves only the location from a partial patch', function () {
+    $user = User::factory()->create(['nearby_mode' => 'radius', 'radius_miles' => 25, 'notify_email' => false]);
+
+    $this->actingAs($user)->patch('/settings/alerts', [
+        'home_location_name' => 'Dublin', 'home_lat' => 53.3, 'home_lng' => -6.2, 'home_country_code' => 'ie',
+    ])->assertSessionHasNoErrors();
+
+    $user->refresh();
+    expect($user->home_location_name)->toBe('Dublin')->and($user->home_country_code)->toBe('IE')
+        ->and($user->nearby_mode)->toBe('radius')->and($user->radius_miles)->toBe(25)->and($user->notify_email)->toBeFalse();
+});
+
+it('allows a radius without a nearby mode', function () {
+    $user = User::factory()->create(['nearby_mode' => 'country']);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 250])->assertSessionHasNoErrors();
+
+    expect($user->fresh()->radius_miles)->toBe(250)->and($user->fresh()->nearby_mode)->toBe('country');
+});
+
+it('rejects invalid partial values', function (array $input, string $errorField) {
+    $this->actingAs(User::factory()->create())->patch('/settings/alerts', $input)->assertSessionHasErrors($errorField);
+})->with([
+    'radius' => [['radius_miles' => 30], 'radius_miles'],
+    'mode' => [['nearby_mode' => 'planet'], 'nearby_mode'],
+    'email' => [['notify_email' => 'maybe'], 'notify_email'],
+]);
+
+it('redirects back by default and to the settings list on request', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->from('/settings/near-me')->patch('/settings/alerts', ['notify_email' => true])->assertRedirect('/settings/near-me');
+    $this->actingAs($user)->from('/settings/location')->patch('/settings/alerts', ['notify_email' => true, 'redirect_to' => 'settings'])->assertRedirect('/settings');
 });
