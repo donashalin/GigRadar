@@ -22,7 +22,9 @@ it('gives users sensible alert defaults', function () {
     expect($user->radius_miles)->toBe(50)
         ->and($user->notify_email)->toBeTrue()
         ->and($user->notify_push)->toBeTrue()
-        ->and($user->home_lat)->toBeNull();
+        ->and($user->home_lat)->toBeNull()
+        ->and($user->nearby_mode)->toBe('country')
+        ->and($user->home_country_code)->toBeNull();
 });
 
 it('lets the same Ticketmaster event belong to two artists', function () {

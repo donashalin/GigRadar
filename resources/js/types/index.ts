@@ -35,7 +35,9 @@ export interface User {
     home_location_name: string | null;
     home_lat: number | null;
     home_lng: number | null;
+    home_country_code: string | null;
     radius_miles: number;
+    nearby_mode: 'country' | 'radius';
     notify_email: boolean;
     notify_push: boolean;
     created_at: string;
