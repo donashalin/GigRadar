@@ -55,11 +55,10 @@ Mobile-first layout with a fixed bottom tab bar: **My Artists**, **Search**, **S
 2. **Search** — text input, 300 ms debounce, minimum 2 characters; results show image, name, and Follow button.
 3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed; "Get tickets" opens `ticket_url` in a new tab). Follow/Unfollow button. Alert scope toggle (`Everywhere` / `Near me`), shown only when following. Viewing updates the follow's `last_seen_at`.
 4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any upcoming, non-cancelled concert has `from_seed = false` and `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's area (home country, or radius in miles); without a home location it shows a prompt linking to alert settings.
-5. **Settings**
-   - Home location: type a city (Nominatim lookup) or "Use my current location" (Geolocation API).
-   - Distance: **Anywhere in <country>** (default; country taken from the home location) or 25 / 50 / 100 / 250 miles.
-   - Alert channels: Email on/off; "Push on this device" on/off (requests browser permission, stores/removes this device's subscription).
-   - Sign out; Delete account (confirmation step; removes user, follows, push subscriptions).
+5. **Settings** — iPhone-style grouped list at `/settings`; each row opens a full-screen sub-page with a "‹ Settings" back link in the header. Every choice saves immediately (no Save buttons).
+   - **Alerts** group: *Home location ›* (shows the town or "Not set") → type a town (Nominatim lookup) or "Use my current location"; picking a place saves and returns to Settings; "Remove home location" at the bottom. *Near me ›* (shows "Anywhere in <country>" or "Within N miles") → checkmark list: Anywhere in <country> (default; country from the home location) / 25 / 50 / 100 / 250 miles; tapping saves. *Email alerts* — inline switch, saves on toggle. (Plan 3 adds *Push on this device* here.)
+   - **Account** group: *Profile ›* (name, email, Delete account at the bottom), *Password ›*, *Appearance ›* (shows Light/Dark/System).
+   - **Log out** row (red).
 
 **Install banner:** on iOS Safari when not running standalone (`navigator.standalone !== true`), show a dismissible banner: "Add GigRadar to your Home Screen for instant alerts" with Share → Add to Home Screen instructions. Dismissal remembered in `localStorage`. On iOS, the push toggle is shown only when running standalone (iOS only supports web push for Home-Screen apps).
 
