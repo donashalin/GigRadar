@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,7 +12,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, HasPushSubscriptions, Notifiable;
 
     /** In-memory defaults mirroring the DB column defaults. */
@@ -19,7 +20,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'nearby_mode' => 'country',
         'radius_miles' => 50,
         'notify_email' => true,
-        'notify_push' => true,
     ];
 
     /**
@@ -57,7 +57,6 @@ class User extends Authenticatable implements MustVerifyEmail
             'home_lng' => 'float',
             'radius_miles' => 'integer',
             'notify_email' => 'boolean',
-            'notify_push' => 'boolean',
         ];
     }
 

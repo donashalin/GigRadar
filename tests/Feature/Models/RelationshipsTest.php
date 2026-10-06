@@ -3,6 +3,7 @@
 use App\Models\Artist;
 use App\Models\Concert;
 use App\Models\User;
+use App\Support\NearbyArea;
 
 it('lets a user follow an artist with default alert scope', function () {
     $user = User::factory()->create();
@@ -21,7 +22,6 @@ it('gives users sensible alert defaults', function () {
 
     expect($user->radius_miles)->toBe(50)
         ->and($user->notify_email)->toBeTrue()
-        ->and($user->notify_push)->toBeTrue()
         ->and($user->home_lat)->toBeNull()
         ->and($user->nearby_mode)->toBe('country')
         ->and($user->home_country_code)->toBeNull();
@@ -52,6 +52,6 @@ it('applies alert defaults in memory and builds a NearbyArea from them', functio
         ->and($user->radius_miles)->toBe(50)
         ->and($user->notify_email)->toBeTrue();
 
-    $area = App\Support\NearbyArea::forUser($user);
+    $area = NearbyArea::forUser($user);
     expect($area->mode)->toBe('country')->and($area->radiusMiles)->toBe(50)->and($area->isConfigured())->toBeFalse();
 });

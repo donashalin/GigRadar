@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BottomTabBar from '@/components/BottomTabBar.vue';
 import InstallBanner from '@/components/InstallBanner.vue';
+import { useInstallBanner } from '@/composables/useInstallBanner';
 import type { BreadcrumbItemType } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { ChevronLeft } from 'lucide-vue-next';
@@ -11,6 +12,8 @@ const props = withDefaults(defineProps<{ breadcrumbs?: BreadcrumbItemType[]; bac
     back: undefined,
     grouped: false,
 });
+
+const { visible: bannerVisible } = useInstallBanner();
 
 const title = computed(() => props.breadcrumbs.at(-1)?.title ?? 'GigRadar');
 </script>
@@ -36,7 +39,10 @@ const title = computed(() => props.breadcrumbs.at(-1)?.title ?? 'GigRadar');
             </div>
         </header>
 
-        <main class="mx-auto w-full min-w-0 max-w-xl flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+        <main
+            class="mx-auto w-full min-w-0 max-w-xl flex-1"
+            :class="bannerVisible ? 'pb-[calc(8.5rem+env(safe-area-inset-bottom))]' : 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]'"
+        >
             <slot />
         </main>
 

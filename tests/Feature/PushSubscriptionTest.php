@@ -129,3 +129,21 @@ it('requires a verified email for push routes', function () {
     $this->actingAs($user)->post('/push-subscriptions', subPayload())->assertRedirect(route('verification.notice'));
     $this->actingAs($user)->delete('/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/x'])->assertRedirect(route('verification.notice'));
 });
+
+it('normalises host case and rejects trailing dot, userinfo and non-443 ports', function (string $endpoint, bool $accepted) {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post('/push-subscriptions', subPayload(['endpoint' => $endpoint]));
+
+    expect($user->pushSubscriptions()->count())->toBe($accepted ? 1 : 0);
+    if (! $accepted) {
+        $response->assertSessionHasErrors('endpoint');
+    }
+})->with([
+    'uppercase host' => ['https://FCM.GoogleAPIs.com/fcm/send/abc', true],
+    'explicit 443' => ['https://fcm.googleapis.com:443/fcm/send/abc', true],
+    'trailing dot' => ['https://fcm.googleapis.com./fcm/send/abc', false],
+    'userinfo' => ['https://user:pw@fcm.googleapis.com/fcm/send/abc', false],
+    'user only' => ['https://user@fcm.googleapis.com/fcm/send/abc', false],
+    'port 8443' => ['https://fcm.googleapis.com:8443/fcm/send/abc', false],
+]);

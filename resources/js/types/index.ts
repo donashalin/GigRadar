@@ -1,4 +1,3 @@
-
 export interface Auth {
     user: User;
 }
@@ -40,7 +39,6 @@ export interface User {
     radius_miles: number;
     nearby_mode: 'country' | 'radius';
     notify_email: boolean;
-    notify_push: boolean;
     created_at: string;
     updated_at: string;
 }

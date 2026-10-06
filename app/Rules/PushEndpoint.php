@@ -5,14 +5,22 @@ namespace App\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
-/** Only accepts https endpoints hosted by known browser push services. */
+/** Only accepts https endpoints (no userinfo, port 443 only) hosted by known browser push services. */
 class PushEndpoint implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $host = is_string($value) ? parse_url($value, PHP_URL_HOST) : null;
+        $parts = is_string($value) ? parse_url($value) : false;
+        $host = is_array($parts) ? ($parts['host'] ?? null) : null;
 
-        if (! is_string($host) || ! self::isAllowedHost(strtolower($host))) {
+        $valid = is_string($host)
+            && ! str_ends_with($host, '.')
+            && ! isset($parts['user'])
+            && ! isset($parts['pass'])
+            && ($parts['port'] ?? 443) === 443
+            && self::isAllowedHost(strtolower($host));
+
+        if (! $valid) {
             $fail('The :attribute must be a web push endpoint from a supported browser.');
         }
     }

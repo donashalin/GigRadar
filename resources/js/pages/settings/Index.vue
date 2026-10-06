@@ -7,7 +7,7 @@ import { usePush } from '@/composables/usePush';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     alerts: { homeLocationName: string | null; nearbySummary: string; notifyEmail: boolean };
@@ -61,13 +61,53 @@ function togglePush() {
 
 const page = usePage<SharedData>();
 const testing = ref(false);
+const testBlocked = computed(() => testing.value || push.busy.value);
+
+// Flash text is mirrored into always-rendered live regions. Clearing first (then setting on the
+// next tick) makes a repeated identical message announce again.
+const successText = ref('');
+const errorText = ref('');
+
+async function syncFlash() {
+    successText.value = '';
+    errorText.value = '';
+    await nextTick();
+    successText.value = page.props.flash?.success ?? '';
+    errorText.value = page.props.flash?.error ?? '';
+}
+watch(() => [page.props.flash?.success, page.props.flash?.error], syncFlash, { immediate: true });
+
+const pushMessage = computed(
+    () => push.error.value ?? (push.permission.value === 'denied' ? 'Notifications are blocked. Allow them in your device settings.' : ''),
+);
 
 function sendTestAlert() {
-    if (testing.value) {
+    if (testBlocked.value) {
         return;
     }
     testing.value = true;
-    router.post('/settings/test-alert', {}, { preserveScroll: true, onFinish: () => (testing.value = false) });
+    router.post(
+        '/settings/test-alert',
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                testing.value = false;
+                syncFlash();
+            },
+        },
+    );
+}
+
+async function logout() {
+    if (push.subscribed.value) {
+        try {
+            await push.disable();
+        } catch {
+            // Logging out matters more than cleaning up this device's subscription.
+        }
+    }
+    router.post('/logout');
 }
 </script>
 
@@ -81,7 +121,9 @@ function sendTestAlert() {
                 <SettingsRow label="Email alerts" label-id="email-alerts-label">
                     <SettingsSwitch :checked="emailOn" labelledby="email-alerts-label" :disabled="pending" @toggle="toggleEmail" />
                 </SettingsRow>
-                <p v-if="emailError" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">Couldn't save — try again.</p>
+                <p role="alert" :class="emailError && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
+                    {{ emailError ? "Couldn't save — try again." : '' }}
+                </p>
 
                 <template v-if="push.needsInstall">
                     <SettingsRow
@@ -92,7 +134,7 @@ function sendTestAlert() {
                         aria-controls="push-install-help"
                         @click="showInstallHelp = !showInstallHelp"
                     />
-                    <p v-if="showInstallHelp" id="push-install-help" class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                    <p v-show="showInstallHelp" id="push-install-help" class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                         Tap Share, then Add to Home Screen, then open GigRadar from the new icon and turn push on here.
                     </p>
                 </template>
@@ -106,16 +148,12 @@ function sendTestAlert() {
                             @toggle="togglePush"
                         />
                     </SettingsRow>
-                    <p v-if="push.error.value" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">{{ push.error.value }}</p>
+                    <p role="alert" :class="pushMessage && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">{{ pushMessage }}</p>
                 </template>
 
-                <SettingsRow label="Send a test alert" action :aria-disabled="testing" @click="sendTestAlert" />
-                <p v-if="page.props.flash?.success" role="status" class="px-4 py-2 text-sm text-green-700 dark:text-green-400">
-                    {{ page.props.flash.success }}
-                </p>
-                <p v-if="page.props.flash?.error" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">
-                    {{ page.props.flash.error }}
-                </p>
+                <SettingsRow label="Send a test alert" action :aria-disabled="testBlocked" @click="sendTestAlert" />
+                <p role="status" :class="successText && 'px-4 py-2'" class="text-sm text-green-700 dark:text-green-400">{{ successText }}</p>
+                <p role="alert" :class="errorText && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">{{ errorText }}</p>
             </SettingsGroup>
 
             <SettingsGroup title="Account">
@@ -125,7 +163,7 @@ function sendTestAlert() {
             </SettingsGroup>
 
             <SettingsGroup>
-                <SettingsRow label="Log out" href="/logout" method="post" destructive />
+                <SettingsRow label="Log out" action destructive @click="logout" />
             </SettingsGroup>
         </div>
     </AppLayout>

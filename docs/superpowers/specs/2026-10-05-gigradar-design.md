@@ -79,7 +79,6 @@ users
   home_country_code   char(2) null                   -- ISO 3166-1 alpha-2 from the home location, e.g. GB
   nearby_mode         enum('country','radius') default 'country' -- "near me" = anywhere in home country, or within radius_miles
   notify_email        boolean default true
-  notify_push         boolean default true
 
 artists
   id, ticketmaster_id varchar unique, name, image_url null,
@@ -121,7 +120,7 @@ push_subscriptions   -- migration published by laravel-notification-channels/web
 | `App\Support\ConcertDiffer` | Pure: given stored IDs and fetched DTOs, returns new / updated sets. | — |
 | `App\Support\Geo` | Pure: `distanceMiles(lat1, lng1, lat2, lng2)` (haversine). | — |
 | `App\Support\RecipientSelector` | Pure: given new events and followers (with pivot + location), returns `user → events` to alert. | `Geo` |
-| `App\Notifications\NewTourDates` | Queued. `via()` returns enabled channels (`mail` if `notify_email`; `WebPushChannel` if `notify_push` and user has subscriptions). Builds message. | — |
+| `App\Notifications\NewTourDates` | Queued. `via()` returns enabled channels (`mail` if `notify_email`; `WebPushChannel` if the user has any push subscription — push goes to every subscribed device, controlled by the per-device switch in Settings). Builds message. | — |
 | `App\Console\Commands\CheckDates` | `gigradar:check-dates` orchestration (§7). | `ArtistSync`, `RecipientSelector` |
 | `App\Services\Geocoder` | Nominatim lookup for typed city, cached 30 days, with app User-Agent. | `Http`, cache |
 

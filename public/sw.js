@@ -1,4 +1,4 @@
-const CACHE = 'gigradar-v1';
+const CACHE = 'gigradar-v2';
 const PRECACHE = ['/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -35,12 +35,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const url = new URL(event.notification.data?.url ?? '/dashboard', self.location.origin);
+    let url = new URL(event.notification.data?.url ?? '/dashboard', self.location.origin);
+    if (url.origin !== self.location.origin) {
+        url = new URL('/dashboard', self.location.origin);
+    }
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
             const existing = clients.find((client) => new URL(client.url).origin === url.origin);
             if (existing) {
-                return existing.focus().then((focused) => (focused || existing).navigate(url.href));
+                return existing
+                    .focus()
+                    .then((focused) => (focused || existing).navigate(url.href))
+                    .catch(() => self.clients.openWindow(url.href));
             }
             return self.clients.openWindow(url.href);
         }),
