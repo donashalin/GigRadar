@@ -38,6 +38,7 @@ const locating = ref(false);
 let timer: ReturnType<typeof setTimeout> | undefined;
 let searchController: AbortController | undefined;
 let reverseController: AbortController | undefined;
+let lookupId = 0;
 const previous = ref<Place | null>(null);
 
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
@@ -105,7 +106,10 @@ function clearLocation() {
 }
 
 function cancelChange() {
+    lookupId++;
     searchController?.abort();
+    reverseController?.abort();
+    locating.value = false;
     clearTimeout(timer);
     if (previous.value) {
         form.home_location_name = previous.value.name;
@@ -125,28 +129,41 @@ function useCurrentLocation() {
     }
     clearTimeout(timer);
     searchController?.abort();
+    const id = ++lookupId;
     locating.value = true;
     lookupError.value = null;
     navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
+            if (id !== lookupId) {
+                return;
+            }
             reverseController?.abort();
             reverseController = new AbortController();
             try {
-                choose(await getJson<Place>(`/settings/alerts/reverse?lat=${coords.latitude}&lng=${coords.longitude}`, reverseController.signal));
+                const place = await getJson<Place>(`/settings/alerts/reverse?lat=${coords.latitude}&lng=${coords.longitude}`, reverseController.signal);
+                if (id !== lookupId) {
+                    return;
+                }
+                choose(place);
             } catch (e) {
-                if ((e as Error).name !== 'AbortError') {
+                if (id === lookupId && (e as Error).name !== 'AbortError') {
                     lookupError.value = (e as Error).message;
                 }
             } finally {
-                locating.value = false;
+                if (id === lookupId) {
+                    locating.value = false;
+                }
             }
         },
         (error) => {
+            if (id !== lookupId) {
+                return;
+            }
             locating.value = false;
             lookupError.value =
-                error.code === 1
+                error.code === error.PERMISSION_DENIED
                     ? 'Location permission was denied. You can type a city instead.'
-                    : error.code === 3
+                    : error.code === error.TIMEOUT
                       ? 'Finding your location took too long — try again or type a city.'
                       : "Couldn't get your location.";
         },
