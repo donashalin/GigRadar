@@ -31,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('geo-search', fn (Request $r) => Limit::perMinute(30)->by('geo-search:'.$r->user()?->id));
         RateLimiter::for('push-subscriptions', fn (Request $r) => Limit::perMinute(20)->by('push-subscriptions:'.$r->user()?->id));
         RateLimiter::for('test-alert', fn (Request $r) => Limit::perMinute(3)->by('test-alert:'.$r->user()?->id));
+        RateLimiter::for('dismissals', fn (Request $r) => Limit::perMinute(60)->by('dismissals:'.$r->user()?->id));
         RateLimiter::for('geo-reverse', fn (Request $r) => Limit::perMinute(10)->by('geo-reverse:'.$r->user()?->id));
     }
 }

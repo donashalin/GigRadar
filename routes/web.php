@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ArtistController;
+use App\Http\Controllers\DiscoverController;
+use App\Http\Controllers\DismissedArtistController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\MyArtistsController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -26,6 +28,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereAlphaNumeric('ticketmasterId')->name('follows.update');
     Route::delete('artists/{ticketmasterId}/follow', [FollowController::class, 'destroy'])
         ->whereAlphaNumeric('ticketmasterId')->name('follows.destroy');
+
+    Route::get('discover', DiscoverController::class)->name('discover');
+    Route::post('dismissed-artists', [DismissedArtistController::class, 'store'])
+        ->middleware('throttle:dismissals')->name('dismissed-artists.store');
+    Route::delete('dismissed-artists/{attractionId}', [DismissedArtistController::class, 'destroy'])
+        ->whereAlphaNumeric('attractionId')->middleware('throttle:dismissals')->name('dismissed-artists.destroy');
 
     Route::post('push-subscriptions', [PushSubscriptionController::class, 'store'])
         ->middleware('throttle:push-subscriptions')->name('push-subscriptions.store');

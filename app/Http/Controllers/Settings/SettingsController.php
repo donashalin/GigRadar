@@ -24,6 +24,7 @@ class SettingsController extends Controller
                 'nearbySummary' => $nearbySummary,
                 'notifyEmail' => (bool) $user->notify_email,
             ],
+            'hiddenCount' => $user->dismissedArtists()->count(),
         ]);
     }
 }

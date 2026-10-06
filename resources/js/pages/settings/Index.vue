@@ -11,6 +11,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     alerts: { homeLocationName: string | null; nearbySummary: string; notifyEmail: boolean };
+    hiddenCount: number;
 }>();
 
 const { appearance } = useAppearance();
@@ -118,6 +119,7 @@ async function logout() {
             <SettingsGroup title="Alerts">
                 <SettingsRow label="Home location" :value="alerts.homeLocationName ?? 'Not set'" href="/settings/location" />
                 <SettingsRow label="Near me" :value="alerts.nearbySummary" href="/settings/near-me" />
+                <SettingsRow label="Hidden artists" :value="String(hiddenCount)" href="/settings/hidden-artists" />
                 <SettingsRow label="Email alerts" label-id="email-alerts-label">
                     <SettingsSwitch :checked="emailOn" labelledby="email-alerts-label" :disabled="pending" @toggle="toggleEmail" />
                 </SettingsRow>

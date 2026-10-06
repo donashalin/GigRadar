@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DismissedArtistController;
 use App\Http\Controllers\Settings\AlertSettingsController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -25,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings', [SettingsController::class, 'index'])->name('settings');
     Route::get('settings/location', [AlertSettingsController::class, 'location'])->name('settings.location');
     Route::get('settings/near-me', [AlertSettingsController::class, 'nearMe'])->name('settings.near-me');
+    Route::get('settings/hidden-artists', [DismissedArtistController::class, 'index'])->name('settings.hidden-artists');
     Route::redirect('settings/alerts', '/settings', 301);
     Route::patch('settings/alerts', [AlertSettingsController::class, 'update'])->name('alerts.update');
     Route::post('settings/test-alert', [TestAlertController::class, 'store'])
