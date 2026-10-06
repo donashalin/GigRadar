@@ -36,12 +36,7 @@ class ArtistController extends Controller
             $user->artists()->updateExistingPivot($artist->id, ['last_seen_at' => now()]);
         }
 
-        $concerts = $artist->concerts()
-            ->where(fn ($q) => $q->where('local_date', '>=', today()->toDateString())
-                ->orWhere(fn ($q) => $q->whereNull('local_date')->where('starts_at', '>=', now()->startOfDay())))
-            ->orderByRaw('COALESCE(local_date, DATE(starts_at))')
-            ->orderBy('starts_at')
-            ->get();
+        $concerts = $artist->concerts()->upcoming()->get();
 
         return Inertia::render('artists/Show', [
             'artist' => [

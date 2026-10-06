@@ -122,3 +122,21 @@ it('does not change an existing non-null alerted_at', function () {
 
     expect($existing->fresh()->alerted_at->equalTo($alertedAt))->toBeTrue();
 });
+
+it('marks concerts stored while seeding as from_seed', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->unseeded()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+
+    app(ArtistSync::class)->syncEvents($artist);
+
+    expect($artist->concerts()->where('from_seed', false)->count())->toBe(0);
+});
+
+it('does not mark concerts of an already-seeded artist as from_seed', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('events'))]);
+    $artist = Artist::factory()->create(['ticketmaster_id' => 'K8vZ917G1V0']);
+
+    app(ArtistSync::class)->syncEvents($artist);
+
+    expect($artist->concerts()->where('from_seed', true)->count())->toBe(0);
+});

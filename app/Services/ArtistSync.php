@@ -38,7 +38,7 @@ class ArtistSync
             $created = collect($new)
                 ->map(fn (ConcertData $c) => $artist->concerts()->createOrFirst(
                     ['ticketmaster_id' => $c->id],
-                    [...$this->attributes($c), 'first_seen_at' => $now, 'alerted_at' => $wasSeeded ? null : $now],
+                    [...$this->attributes($c), 'first_seen_at' => $now, 'alerted_at' => $wasSeeded ? null : $now, 'from_seed' => ! $wasSeeded],
                 ))
                 ->filter(fn (Concert $c) => $c->wasRecentlyCreated)
                 ->values();

@@ -25,6 +25,7 @@ class ConcertFactory extends Factory
             'status' => 'onsale',
             'first_seen_at' => now(),
             'alerted_at' => now(),
+            'from_seed' => false,
         ];
     }
 }
