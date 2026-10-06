@@ -6,25 +6,24 @@ import HeadingSmall from '@/components/HeadingSmall.vue';
 import { type BreadcrumbItem } from '@/types';
 
 import AppLayout from '@/layouts/AppLayout.vue';
-import SettingsLayout from '@/layouts/settings/Layout.vue';
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Appearance settings',
+        title: 'Appearance',
         href: '/settings/appearance',
     },
 ];
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Appearance settings" />
+    <AppLayout :breadcrumbs="breadcrumbItems" :back="{ href: '/settings', label: 'Settings' }">
+        <Head title="Appearance" />
 
-        <SettingsLayout>
+        <div class="mx-auto w-full max-w-xl space-y-6 p-4">
             <div class="space-y-6">
-                <HeadingSmall title="Appearance settings" description="Update your account's appearance settings" />
+                <HeadingSmall title="Theme" description="Choose how GigRadar looks on this device" />
                 <AppearanceTabs />
             </div>
-        </SettingsLayout>
+        </div>
     </AppLayout>
 </template>

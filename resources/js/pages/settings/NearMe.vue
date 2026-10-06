@@ -77,7 +77,11 @@ function save(data: { nearby_mode: 'country' | 'radius'; radius_miles?: number }
                         @click="save({ nearby_mode: 'radius', radius_miles: miles })"
                     >
                         <span class="min-w-0 flex-1 truncate">Within {{ miles }} miles</span>
-                        <Check v-if="nearbyMode === 'radius' && radiusMiles === miles" class="size-5 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+                        <Check
+                            v-if="nearbyMode === 'radius' && radiusMiles === miles"
+                            class="size-5 shrink-0 text-violet-600 dark:text-violet-400"
+                            aria-hidden="true"
+                        />
                     </button>
                 </div>
             </SettingsGroup>
@@ -87,7 +91,10 @@ function save(data: { nearby_mode: 'country' | 'radius'; radius_miles?: number }
             <p v-if="nearbyMode === 'country' && !homeCountryCode" class="px-4 text-sm text-neutral-500 dark:text-neutral-400">
                 <template v-if="hasHomeLocation">Re-pick your home location to use this.</template>
                 <template v-else>
-                    <Link href="/settings/location" class="font-medium text-violet-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 dark:text-violet-400">
+                    <Link
+                        href="/settings/location"
+                        class="font-medium text-violet-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 dark:text-violet-400"
+                    >
                         Set your home location
                     </Link>
                     so we know which country.

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { TransitionRoot } from '@headlessui/vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -20,7 +19,7 @@ defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Password settings',
+        title: 'Password',
         href: '/settings/password',
     },
 ];
@@ -58,12 +57,12 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Profile settings" />
+    <AppLayout :breadcrumbs="breadcrumbItems" :back="{ href: '/settings', label: 'Settings' }">
+        <Head title="Password" />
 
-        <SettingsLayout>
+        <div class="mx-auto w-full max-w-xl space-y-6 p-4">
             <div class="space-y-6">
-                <HeadingSmall title="Update password" description="Ensure your account is using a long, random password to stay secure" />
+                <HeadingSmall title="Choose a new password" description="Ensure your account is using a long, random password to stay secure" />
 
                 <form @submit.prevent="updatePassword" class="space-y-6">
                     <div class="grid gap-2">
@@ -122,6 +121,6 @@ const updatePassword = () => {
                     </div>
                 </form>
             </div>
-        </SettingsLayout>
+        </div>
     </AppLayout>
 </template>

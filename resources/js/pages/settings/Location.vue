@@ -73,7 +73,12 @@ onBeforeUnmount(() => {
     reverseController?.abort();
 });
 
-function saveLocation(fields: { home_location_name: string | null; home_lat: number | null; home_lng: number | null; home_country_code: string | null }) {
+function saveLocation(fields: {
+    home_location_name: string | null;
+    home_lat: number | null;
+    home_lng: number | null;
+    home_country_code: string | null;
+}) {
     if (saving.value) {
         return;
     }
@@ -85,7 +90,12 @@ function saveLocation(fields: { home_location_name: string | null; home_lat: num
         {
             preserveScroll: true,
             onError: (errors) => {
-                saveError.value = errors.home_location_name || errors.home_lat || errors.home_lng || errors.home_country_code || "Couldn't save that. Please try again.";
+                saveError.value =
+                    errors.home_location_name ||
+                    errors.home_lat ||
+                    errors.home_lng ||
+                    errors.home_country_code ||
+                    "Couldn't save that. Please try again.";
             },
             onFinish: () => {
                 saving.value = false;
@@ -125,7 +135,10 @@ function useCurrentLocation() {
             reverseController?.abort();
             reverseController = new AbortController();
             try {
-                const place = await getJson<Place>(`/settings/alerts/reverse?lat=${coords.latitude}&lng=${coords.longitude}`, reverseController.signal);
+                const place = await getJson<Place>(
+                    `/settings/alerts/reverse?lat=${coords.latitude}&lng=${coords.longitude}`,
+                    reverseController.signal,
+                );
                 if (id !== lookupId) {
                     return;
                 }
@@ -178,7 +191,10 @@ function useCurrentLocation() {
                     placeholder="Type a town or city…"
                     class="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 dark:border-neutral-700 dark:bg-neutral-900"
                 />
-                <ul v-if="places.length" class="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+                <ul
+                    v-if="places.length"
+                    class="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800"
+                >
                     <li v-for="place in places" :key="`${place.lat},${place.lng}`">
                         <button
                             type="button"

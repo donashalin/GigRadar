@@ -65,7 +65,7 @@ function toggleEmail() {
                             :class="emailOn ? 'bg-violet-600 dark:bg-violet-500' : 'bg-neutral-300 dark:bg-neutral-700'"
                         >
                             <span
-                                class="absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow transition-transform"
+                                class="absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow transition-transform"
                                 :class="emailOn ? 'translate-x-5' : 'translate-x-0'"
                             />
                         </span>

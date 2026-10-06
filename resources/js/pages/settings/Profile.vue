@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
-import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem, type SharedData, type User } from '@/types';
 
 interface Props {
@@ -22,7 +21,7 @@ defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
+        title: 'Profile',
         href: '/settings/profile',
     },
 ];
@@ -43,12 +42,12 @@ const submit = () => {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Profile settings" />
+    <AppLayout :breadcrumbs="breadcrumbs" :back="{ href: '/settings', label: 'Settings' }">
+        <Head title="Profile" />
 
-        <SettingsLayout>
+        <div class="mx-auto w-full max-w-xl space-y-6 p-4">
             <div class="flex flex-col space-y-6">
-                <HeadingSmall title="Profile information" description="Update your name and email address" />
+                <HeadingSmall title="Your details" description="Update your name and email address" />
 
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="grid gap-2">
@@ -106,6 +105,6 @@ const submit = () => {
             </div>
 
             <DeleteUser />
-        </SettingsLayout>
+        </div>
     </AppLayout>
 </template>
