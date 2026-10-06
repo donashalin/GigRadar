@@ -115,6 +115,7 @@ function choose(place: Place) {
 }
 
 function removeLocation() {
+    if (busy.value) return;
     saveLocation({ home_location_name: null, home_lat: null, home_lng: null, home_country_code: null });
 }
 
@@ -176,7 +177,7 @@ function useCurrentLocation() {
     <AppLayout :breadcrumbs="[{ title: 'Home location', href: '/settings/location' }]" :back="{ href: '/settings', label: 'Settings' }" grouped>
         <div class="space-y-6 p-4">
             <SettingsGroup v-if="homeLocationName" title="Current">
-                <SettingsRow label="Home location" :value="homeLocationName" />
+                <p class="px-4 py-3 break-words">{{ homeLocationName }}</p>
             </SettingsGroup>
 
             <div class="space-y-3">
