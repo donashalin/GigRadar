@@ -3,7 +3,8 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const sidebarNavItems: NavItem[] = [
     {
@@ -24,7 +25,8 @@ const sidebarNavItems: NavItem[] = [
     },
 ];
 
-const currentPath = window.location.pathname;
+const page = usePage();
+const currentPath = computed(() => page.url.split('?')[0]);
 </script>
 
 <template>
@@ -50,7 +52,7 @@ const currentPath = window.location.pathname;
                     href="/logout"
                     method="post"
                     as="button"
-                    class="mt-4 flex min-h-11 w-full items-center rounded-md px-4 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                    class="mt-4 flex min-h-11 w-full items-center rounded-md px-4 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
                     Log out
                 </Link>
