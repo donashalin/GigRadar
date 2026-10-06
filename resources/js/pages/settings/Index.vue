@@ -15,6 +15,7 @@ const appearanceLabel = computed(() => ({ light: 'Light', dark: 'Dark', system: 
 
 // Optimistic value shown while a save is in flight; reverts if the save fails.
 const pending = ref(false);
+const emailError = ref(false);
 const optimisticEmail = ref<boolean | null>(null);
 const emailOn = computed(() => optimisticEmail.value ?? props.alerts.notifyEmail);
 
@@ -24,6 +25,7 @@ function toggleEmail() {
     }
     const next = !emailOn.value;
     pending.value = true;
+    emailError.value = false;
     optimisticEmail.value = next;
     router.patch(
         '/settings/alerts',
@@ -33,6 +35,7 @@ function toggleEmail() {
             preserveState: true,
             onError: () => {
                 optimisticEmail.value = null;
+                emailError.value = true;
             },
             onFinish: () => {
                 pending.value = false;
@@ -45,19 +48,19 @@ function toggleEmail() {
 
 <template>
     <Head title="Settings" />
-    <AppLayout :breadcrumbs="[{ title: 'Settings', href: '/settings' }]">
-        <div class="min-h-[calc(100svh-3.5rem)] space-y-6 bg-neutral-100 p-4 dark:bg-neutral-950">
+    <AppLayout :breadcrumbs="[{ title: 'Settings', href: '/settings' }]" grouped>
+        <div class="space-y-6 p-4">
             <SettingsGroup title="Alerts">
                 <SettingsRow label="Home location" :value="alerts.homeLocationName ?? 'Not set'" href="/settings/location" />
                 <SettingsRow label="Near me" :value="alerts.nearbySummary" href="/settings/near-me" />
-                <SettingsRow label="Email alerts">
+                <SettingsRow label="Email alerts" label-id="email-alerts-label">
                     <button
                         type="button"
                         role="switch"
                         :aria-checked="emailOn"
-                        aria-label="Email alerts"
-                        :disabled="pending"
-                        class="-my-2 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:opacity-60"
+                        aria-labelledby="email-alerts-label"
+                        :aria-disabled="pending"
+                        class="-my-2 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 aria-disabled:opacity-60"
                         @click="toggleEmail"
                     >
                         <span
@@ -71,6 +74,7 @@ function toggleEmail() {
                         </span>
                     </button>
                 </SettingsRow>
+                <p v-if="emailError" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">Couldn't save — try again.</p>
             </SettingsGroup>
 
             <SettingsGroup title="Account">

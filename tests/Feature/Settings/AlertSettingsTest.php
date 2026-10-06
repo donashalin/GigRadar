@@ -19,8 +19,7 @@ it('shows the home location page', function () {
 
     $this->actingAs($user)->get('/settings/location')
         ->assertInertia(fn (Assert $page) => $page->component('settings/Location')
-            ->where('homeLocationName', 'Leicester, Leicestershire, United Kingdom')
-            ->where('homeCountryCode', 'GB'));
+            ->where('homeLocationName', 'Leicester, Leicestershire, United Kingdom'));
 });
 
 it('shows the near me page', function () {
@@ -289,6 +288,11 @@ it('rejects invalid partial values', function (array $input, string $errorField)
     'radius' => [['radius_miles' => 30], 'radius_miles'],
     'mode' => [['nearby_mode' => 'planet'], 'nearby_mode'],
     'email' => [['notify_email' => 'maybe'], 'notify_email'],
+    'mode null' => [['nearby_mode' => null], 'nearby_mode'],
+    'email null' => [['notify_email' => null], 'notify_email'],
+    'lat null alone' => [['home_lat' => null], 'home_location_name'],
+    'name null alone' => [['home_location_name' => null], 'home_lat'],
+    'lng alone' => [['home_lng' => 1.5], 'home_location_name'],
 ]);
 
 it('redirects back by default and to the settings list on request', function () {
@@ -296,4 +300,12 @@ it('redirects back by default and to the settings list on request', function () 
 
     $this->actingAs($user)->from('/settings/near-me')->patch('/settings/alerts', ['notify_email' => true])->assertRedirect('/settings/near-me');
     $this->actingAs($user)->from('/settings/location')->patch('/settings/alerts', ['notify_email' => true, 'redirect_to' => 'settings'])->assertRedirect('/settings');
+});
+
+it('ignores a lone country code without a location', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB']);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['home_country_code' => 'IE'])->assertSessionHasNoErrors();
+
+    expect($user->fresh()->home_country_code)->toBe('GB');
 });

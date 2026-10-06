@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import HeadingSmall from '@/components/HeadingSmall.vue';
+import SettingsGroup from '@/components/settings/SettingsGroup.vue';
+import SettingsRow from '@/components/settings/SettingsRow.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -13,7 +14,6 @@ interface Place {
 
 defineProps<{
     homeLocationName: string | null;
-    homeCountryCode: string | null;
 }>();
 
 const placeQuery = ref('');
@@ -89,6 +89,7 @@ function saveLocation(fields: {
         { ...fields, redirect_to: 'settings' },
         {
             preserveScroll: true,
+            preserveState: 'errors',
             onError: (errors) => {
                 saveError.value =
                     errors.home_location_name ||
@@ -172,13 +173,11 @@ function useCurrentLocation() {
 
 <template>
     <Head title="Home location" />
-    <AppLayout :breadcrumbs="[{ title: 'Home location', href: '/settings/location' }]" :back="{ href: '/settings', label: 'Settings' }">
-        <div class="mx-auto w-full max-w-xl space-y-6 p-4">
-            <HeadingSmall title="Home location" description="Used for “Near me” alerts and gigs near you." />
-
-            <p v-if="homeLocationName" class="rounded-xl border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-                Current: <span class="font-medium">{{ homeLocationName }}</span>
-            </p>
+    <AppLayout :breadcrumbs="[{ title: 'Home location', href: '/settings/location' }]" :back="{ href: '/settings', label: 'Settings' }" grouped>
+        <div class="space-y-6 p-4">
+            <SettingsGroup v-if="homeLocationName" title="Current">
+                <SettingsRow label="Home location" :value="homeLocationName" />
+            </SettingsGroup>
 
             <div class="space-y-3">
                 <input
@@ -219,15 +218,10 @@ function useCurrentLocation() {
                 <p v-if="saveError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
             </div>
 
-            <button
-                v-if="homeLocationName"
-                type="button"
-                class="min-h-12 w-full rounded-xl bg-white px-4 text-center font-medium text-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:opacity-60 dark:bg-neutral-900 dark:text-red-400"
-                :disabled="busy"
-                @click="removeLocation"
-            >
-                Remove home location
-            </button>
+            <SettingsGroup v-if="homeLocationName">
+                <SettingsRow label="Remove home location" action destructive :aria-disabled="busy" @click="removeLocation" />
+            </SettingsGroup>
+            <p class="px-4 text-sm text-neutral-500 dark:text-neutral-400">Used for “Near me” alerts and gigs near you.</p>
         </div>
     </AppLayout>
 </template>

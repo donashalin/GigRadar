@@ -5,16 +5,17 @@ import { Link } from '@inertiajs/vue3';
 import { ChevronLeft } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-const props = withDefaults(defineProps<{ breadcrumbs?: BreadcrumbItemType[]; back?: { href: string; label: string } }>(), {
+const props = withDefaults(defineProps<{ breadcrumbs?: BreadcrumbItemType[]; back?: { href: string; label: string }; grouped?: boolean }>(), {
     breadcrumbs: () => [],
     back: undefined,
+    grouped: false,
 });
 
 const title = computed(() => props.breadcrumbs.at(-1)?.title ?? 'GigRadar');
 </script>
 
 <template>
-    <div class="flex min-h-svh flex-col bg-white dark:bg-neutral-950">
+    <div class="flex min-h-svh flex-col" :class="grouped ? 'bg-neutral-100 dark:bg-neutral-950' : 'bg-white dark:bg-neutral-950'">
         <header
             class="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
         >

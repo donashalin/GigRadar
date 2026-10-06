@@ -23,7 +23,6 @@ class AlertSettingsController extends Controller
 
         return Inertia::render('settings/Location', [
             'homeLocationName' => $user->home_location_name,
-            'homeCountryCode' => $user->home_country_code,
         ]);
     }
 
@@ -43,14 +42,19 @@ class AlertSettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'home_location_name' => ['nullable', 'string', 'max:255', 'required_with:home_lat,home_lng'],
-            'home_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:home_location_name'],
-            'home_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:home_location_name'],
+            'home_location_name' => ['nullable', 'string', 'max:255', 'required_with:home_lat,home_lng', 'present_with:home_lat,home_lng'],
+            'home_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:home_location_name', 'present_with:home_location_name,home_lng'],
+            'home_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:home_location_name', 'present_with:home_location_name,home_lat'],
             'home_country_code' => ['nullable', 'string', 'size:2', 'alpha:ascii'],
             'radius_miles' => ['sometimes', 'integer', Rule::in(self::RADIUS_OPTIONS)],
             'nearby_mode' => ['sometimes', Rule::in(['country', 'radius'])],
             'notify_email' => ['sometimes', 'boolean'],
         ]);
+
+        // A country code only makes sense alongside the location it describes.
+        if (! array_key_exists('home_lat', $validated)) {
+            unset($validated['home_country_code']);
+        }
 
         // The country code belongs to the location: never keep a stale one when the location changes or is cleared.
         if (array_key_exists('home_lat', $validated)) {
