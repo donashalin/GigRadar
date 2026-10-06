@@ -7,6 +7,10 @@ import { Link } from '@inertiajs/vue3';
 
 const sidebarNavItems: NavItem[] = [
     {
+        title: 'Alerts',
+        href: '/settings/alerts',
+    },
+    {
         title: 'Profile',
         href: '/settings/profile',
     },
@@ -25,7 +29,7 @@ const currentPath = window.location.pathname;
 
 <template>
     <div class="px-4 py-6">
-        <Heading title="Settings" description="Manage your profile and account settings" />
+        <Heading title="Settings" description="Manage alerts, your profile and account" />
 
         <div class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-x-12 lg:space-y-0">
             <aside class="w-full max-w-xl lg:w-48">
@@ -34,7 +38,7 @@ const currentPath = window.location.pathname;
                         v-for="item in sidebarNavItems"
                         :key="item.href"
                         variant="ghost"
-                        :class="['w-full justify-start', { 'bg-muted': currentPath === item.href }]"
+                        :class="['min-h-11 w-full justify-start', { 'bg-muted': currentPath === item.href }]"
                         as-child
                     >
                         <Link :href="item.href">
@@ -42,6 +46,14 @@ const currentPath = window.location.pathname;
                         </Link>
                     </Button>
                 </nav>
+                <Link
+                    href="/logout"
+                    method="post"
+                    as="button"
+                    class="mt-4 flex min-h-11 w-full items-center rounded-md px-4 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                >
+                    Log out
+                </Link>
             </aside>
 
             <Separator class="my-6 md:hidden" />

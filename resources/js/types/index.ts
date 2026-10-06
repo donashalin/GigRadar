@@ -35,6 +35,12 @@ export interface User {
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    home_location_name: string | null;
+    home_lat: number | null;
+    home_lng: number | null;
+    radius_miles: number;
+    notify_email: boolean;
+    notify_push: boolean;
     created_at: string;
     updated_at: string;
 }
