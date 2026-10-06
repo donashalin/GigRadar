@@ -41,7 +41,7 @@ class MyArtistsController extends Controller
             'name' => $artist->name,
             'imageUrl' => $artist->image_url,
             'alertScope' => $artist->pivot->alert_scope,
-            'hasNew' => $concerts->contains(fn (Concert $c) => ! $c->from_seed && ($lastSeen === null || $c->first_seen_at->gt($lastSeen))),
+            'hasNew' => $concerts->contains(fn (Concert $c) => ! $c->from_seed && $c->status !== 'cancelled' && ($lastSeen === null || $c->first_seen_at->gt($lastSeen))),
             'nextConcert' => $next ? [
                 'localDate' => $next->local_date?->toDateString(),
                 'startsAt' => $next->starts_at->toIso8601String(),

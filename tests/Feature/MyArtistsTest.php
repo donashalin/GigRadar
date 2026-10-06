@@ -105,3 +105,43 @@ it('limits nearby to the next 10 concerts', function () {
         ->assertInertia(fn (Assert $page) => $page->has('nearby', 10)
             ->where('nearby.0.localDate', today()->addDay()->toDateString()));
 });
+
+it('does not mark an artist as new when its only new concert is cancelled', function () {
+    $user = User::factory()->create();
+    $artist = Artist::factory()->create();
+    followArtist($user, $artist);
+    Concert::factory()->for($artist)->create(['first_seen_at' => now(), 'from_seed' => false, 'status' => 'cancelled']);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('artists.0.hasNew', false));
+});
+
+it('marks a new non-seed concert as new when the follow has never been seen', function () {
+    $user = User::factory()->create();
+    $artist = Artist::factory()->create();
+    followArtist($user, $artist, ['last_seen_at' => null]);
+    Concert::factory()->for($artist)->create(['first_seen_at' => now(), 'from_seed' => false]);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->where('artists.0.hasNew', true));
+});
+
+it('orders nearby concerts across artists by date and includes artist id and venue', function () {
+    $user = User::factory()->create(leicesterHome());
+    $a = Artist::factory()->create(['name' => 'A', 'ticketmaster_id' => 'tm-a']);
+    $b = Artist::factory()->create(['name' => 'B', 'ticketmaster_id' => 'tm-b']);
+    followArtist($user, $a);
+    followArtist($user, $b);
+    $place = ['lat' => 52.6369, 'lng' => -1.1398];
+    Concert::factory()->for($a)->create([...$place, 'venue_name' => 'Late Hall', 'local_date' => today()->addDays(9)->toDateString(), 'starts_at' => now()->addDays(9)]);
+    Concert::factory()->for($b)->create([...$place, 'venue_name' => 'Mid Hall', 'local_date' => today()->addDays(5)->toDateString(), 'starts_at' => now()->addDays(5)]);
+    Concert::factory()->for($a)->create([...$place, 'venue_name' => 'Early Hall', 'local_date' => today()->addDays(2)->toDateString(), 'starts_at' => now()->addDays(2)]);
+
+    $this->actingAs($user)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page->has('nearby', 3)
+            ->where('nearby.0.venueName', 'Early Hall')
+            ->where('nearby.0.artistTicketmasterId', 'tm-a')
+            ->where('nearby.1.venueName', 'Mid Hall')
+            ->where('nearby.1.artistTicketmasterId', 'tm-b')
+            ->where('nearby.2.venueName', 'Late Hall'));
+});
