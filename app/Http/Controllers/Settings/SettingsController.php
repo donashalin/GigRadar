@@ -23,6 +23,7 @@ class SettingsController extends Controller
                 'homeLocationName' => $user->home_location_name,
                 'nearbySummary' => $nearbySummary,
                 'notifyEmail' => (bool) $user->notify_email,
+                'notifySimilar' => (bool) $user->notify_similar,
             ],
             'hiddenCount' => $user->dismissedArtists()->count(),
         ]);

@@ -2,7 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import { ChevronRight } from 'lucide-vue-next';
 
-defineProps<{ label: string; value?: string | null; href?: string; destructive?: boolean; method?: 'post'; labelId?: string; action?: boolean }>();
+defineProps<{ label: string; value?: string | null; href?: string; destructive?: boolean; method?: 'post'; labelId?: string; action?: boolean; sublabel?: string }>();
 
 const rowClass =
     'flex min-h-12 w-full items-center gap-3 px-4 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-violet-600';
@@ -21,7 +21,11 @@ const rowClass =
         <span v-if="value" class="max-w-[50%] truncate text-neutral-500 dark:text-neutral-400">{{ value }}</span>
     </button>
     <div v-else :class="[rowClass, destructive && 'justify-center']">
-        <span :id="labelId" :class="['min-w-0 truncate', destructive ? 'text-red-600 dark:text-red-400' : 'flex-1']">{{ label }}</span>
+        <span v-if="sublabel" class="min-w-0 flex-1 py-2">
+            <span :id="labelId" class="block">{{ label }}</span>
+            <span class="block text-sm text-neutral-500 dark:text-neutral-400">{{ sublabel }}</span>
+        </span>
+        <span v-else :id="labelId" :class="['min-w-0 truncate', destructive ? 'text-red-600 dark:text-red-400' : 'flex-1']">{{ label }}</span>
         <span v-if="value" class="max-w-[50%] truncate text-neutral-500 dark:text-neutral-400">{{ value }}</span>
         <slot />
     </div>

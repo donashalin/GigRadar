@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('gigradar:check-dates')->everySixHours()->withoutOverlapping()->onOneServer()->timezone('Europe/London');
 Schedule::command('gigradar:discover')->dailyAt('04:00')->timezone('Europe/London')->withoutOverlapping()->onOneServer();
+Schedule::command('gigradar:similar-roundup')->weeklyOn(5, '18:00')->timezone('Europe/London')->withoutOverlapping()->onOneServer();

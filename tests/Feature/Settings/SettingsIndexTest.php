@@ -21,3 +21,14 @@ it('renders the settings list with summaries', function (array $attrs, ?string $
     'country mode without code' => [['nearby_mode' => 'country', 'home_country_code' => null, 'home_location_name' => null, 'home_lat' => null, 'home_lng' => null], null, 'Anywhere in my country', false],
     'radius mode' => [['nearby_mode' => 'radius', 'radius_miles' => 50], null, 'Within 50 miles', true],
 ]);
+
+it('exposes the similar artists flag', function (bool $on) {
+    $user = User::factory()->create(['notify_similar' => $on]);
+
+    $this->actingAs($user)->get('/settings')
+        ->assertInertia(fn (Assert $page) => $page->where('alerts.notifySimilar', $on));
+})->with([true, false]);
+
+it('defaults similar artists to off', function () {
+    expect(User::factory()->create()->fresh()->notify_similar)->toBeFalse();
+});

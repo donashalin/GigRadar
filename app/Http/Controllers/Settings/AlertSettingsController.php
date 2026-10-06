@@ -49,6 +49,7 @@ class AlertSettingsController extends Controller
             'radius_miles' => ['sometimes', 'integer', Rule::in(self::RADIUS_OPTIONS)],
             'nearby_mode' => ['sometimes', Rule::in(['country', 'radius'])],
             'notify_email' => ['sometimes', 'boolean'],
+            'notify_similar' => ['sometimes', 'boolean'],
         ]);
 
         // A country code only makes sense alongside the location it describes.

@@ -2,6 +2,7 @@
 
 use App\Models\Artist;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -133,7 +134,7 @@ it('deletes follows when the account is deleted', function () {
 
     $this->actingAs($user)->delete('/settings/profile', ['password' => 'password'])->assertRedirect('/');
 
-    expect(Illuminate\Support\Facades\DB::table('follows')->count())->toBe(0);
+    expect(DB::table('follows')->count())->toBe(0);
 });
 
 it('keeps place search and reverse lookups on separate rate limits', function () {
@@ -188,7 +189,7 @@ it('keeps other users and their follows when an account is deleted', function ()
 
     expect(User::find($user->id))->toBeNull()
         ->and(User::find($other->id))->not->toBeNull()
-        ->and(Illuminate\Support\Facades\DB::table('follows')->count())->toBe(1);
+        ->and(DB::table('follows')->count())->toBe(1);
 });
 
 it('keeps the existing location when a patch omits the location keys', function () {
@@ -250,6 +251,15 @@ it('saves only the email flag from a partial patch', function () {
     expect($user->notify_email)->toBeFalse()
         ->and($user->home_location_name)->toBe('Leicester')->and($user->home_country_code)->toBe('GB')
         ->and($user->nearby_mode)->toBe('radius')->and($user->radius_miles)->toBe(100);
+});
+
+it('saves only the similar artists flag from a partial patch', function () {
+    $user = User::factory()->create(['notify_email' => true]);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['notify_similar' => true])->assertSessionHasNoErrors();
+    expect($user->fresh()->notify_similar)->toBeTrue()->and($user->fresh()->notify_email)->toBeTrue();
+
+    $this->actingAs($user)->patch('/settings/alerts', ['notify_similar' => 'maybe'])->assertSessionHasErrors('notify_similar');
 });
 
 it('saves only the nearby mode and radius from a partial patch', function () {

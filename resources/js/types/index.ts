@@ -39,6 +39,7 @@ export interface User {
     radius_miles: number;
     nearby_mode: 'country' | 'radius';
     notify_email: boolean;
+    notify_similar: boolean;
     created_at: string;
     updated_at: string;
 }

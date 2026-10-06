@@ -21,6 +21,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'nearby_mode' => 'country',
         'radius_miles' => 50,
         'notify_email' => true,
+        'notify_similar' => false,
     ];
 
     /**
@@ -58,6 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'home_lng' => 'float',
             'radius_miles' => 'integer',
             'notify_email' => 'boolean',
+            'notify_similar' => 'boolean',
         ];
     }
 

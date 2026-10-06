@@ -10,7 +10,7 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
-    alerts: { homeLocationName: string | null; nearbySummary: string; notifyEmail: boolean };
+    alerts: { homeLocationName: string | null; nearbySummary: string; notifyEmail: boolean; notifySimilar: boolean };
     hiddenCount: number;
 }>();
 
@@ -44,6 +44,36 @@ function toggleEmail() {
             onFinish: () => {
                 pending.value = false;
                 optimisticEmail.value = null;
+            },
+        },
+    );
+}
+
+const similarError = ref(false);
+const optimisticSimilar = ref<boolean | null>(null);
+const similarOn = computed(() => optimisticSimilar.value ?? props.alerts.notifySimilar);
+
+function toggleSimilar() {
+    if (pending.value) {
+        return;
+    }
+    const next = !similarOn.value;
+    pending.value = true;
+    similarError.value = false;
+    optimisticSimilar.value = next;
+    router.patch(
+        '/settings/alerts',
+        { notify_similar: next },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                optimisticSimilar.value = null;
+                similarError.value = true;
+            },
+            onFinish: () => {
+                pending.value = false;
+                optimisticSimilar.value = null;
             },
         },
     );
@@ -152,6 +182,13 @@ async function logout() {
                     </SettingsRow>
                     <p role="alert" :class="pushMessage && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">{{ pushMessage }}</p>
                 </template>
+
+                <SettingsRow label="Similar artists" sublabel="Weekly roundup of gigs that match your taste" label-id="similar-alerts-label">
+                    <SettingsSwitch :checked="similarOn" labelledby="similar-alerts-label" :disabled="pending" @toggle="toggleSimilar" />
+                </SettingsRow>
+                <p role="alert" :class="similarError && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
+                    {{ similarError ? "Couldn't save — try again." : '' }}
+                </p>
 
                 <SettingsRow label="Send a test alert" action :aria-disabled="testBlocked" @click="sendTestAlert" />
                 <p role="status" :class="successText && 'px-4 py-2'" class="text-sm text-green-700 dark:text-green-400">{{ successText }}</p>
