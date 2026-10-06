@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasPushSubscriptions, Notifiable;
 
     /** In-memory defaults mirroring the DB column defaults. */
     protected $attributes = [
@@ -58,6 +59,12 @@ class User extends Authenticatable implements MustVerifyEmail
             'notify_email' => 'boolean',
             'notify_push' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Push subscriptions are a morph relation without a foreign key, so cascade by hand.
+        static::deleting(fn (User $user) => $user->pushSubscriptions()->delete());
     }
 
     public function artists(): BelongsToMany
