@@ -26,7 +26,9 @@ class AlertSettingsController extends Controller
                 'homeLocationName' => $user->home_location_name,
                 'homeLat' => $user->home_lat,
                 'homeLng' => $user->home_lng,
+                'homeCountryCode' => $user->home_country_code,
                 'radiusMiles' => $user->radius_miles,
+                'nearbyMode' => $user->nearby_mode,
                 'notifyEmail' => $user->notify_email,
             ],
             'radiusOptions' => self::RADIUS_OPTIONS,
@@ -39,9 +41,15 @@ class AlertSettingsController extends Controller
             'home_location_name' => ['nullable', 'string', 'max:255', 'required_with:home_lat,home_lng'],
             'home_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:home_location_name'],
             'home_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:home_location_name'],
+            'home_country_code' => ['nullable', 'string', 'size:2', 'alpha:ascii'],
             'radius_miles' => ['required', 'integer', Rule::in(self::RADIUS_OPTIONS)],
+            'nearby_mode' => ['required', Rule::in(['country', 'radius'])],
             'notify_email' => ['required', 'boolean'],
         ]);
+
+        if (isset($validated['home_country_code'])) {
+            $validated['home_country_code'] = strtoupper($validated['home_country_code']);
+        }
 
         // Omitted location keys are absent from $validated, so the existing location is kept.
         $request->user()->forceFill($validated)->save();

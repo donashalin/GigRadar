@@ -16,7 +16,7 @@ it('requires a verified user', function () {
 });
 
 it('shows the current alert settings', function () {
-    $user = User::factory()->create(['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6362, 'home_lng' => -1.1331, 'radius_miles' => 100, 'notify_email' => false]);
+    $user = User::factory()->create(['home_location_name' => 'Leicester, Leicestershire, United Kingdom', 'home_lat' => 52.6362, 'home_lng' => -1.1331, 'radius_miles' => 100, 'nearby_mode' => 'radius', 'home_country_code' => 'GB', 'notify_email' => false]);
 
     $this->actingAs($user)->get('/settings/alerts')
         ->assertInertia(fn (Assert $page) => $page->component('settings/Alerts')
@@ -24,6 +24,8 @@ it('shows the current alert settings', function () {
             ->where('settings.homeLat', 52.6362)
             ->where('settings.homeLng', -1.1331)
             ->where('settings.radiusMiles', 100)
+            ->where('settings.nearbyMode', 'radius')
+            ->where('settings.homeCountryCode', 'GB')
             ->where('settings.notifyEmail', false)
             ->where('radiusOptions', [25, 50, 100, 250]));
 });
@@ -35,29 +37,33 @@ it('saves alert settings', function () {
         'home_location_name' => 'Leicester, Leicestershire, United Kingdom',
         'home_lat' => 52.6362,
         'home_lng' => -1.1331,
+        'home_country_code' => 'gb',
         'radius_miles' => 25,
+        'nearby_mode' => 'radius',
         'notify_email' => false,
     ])->assertRedirect('/settings/alerts')->assertSessionHasNoErrors();
 
     $user->refresh();
     expect($user->home_location_name)->toBe('Leicester, Leicestershire, United Kingdom')
         ->and($user->home_lat)->toBe(52.6362)
+        ->and($user->home_country_code)->toBe('GB')
+        ->and($user->nearby_mode)->toBe('radius')
         ->and($user->radius_miles)->toBe(25)
         ->and($user->notify_email)->toBeFalse();
 });
 
 it('clears the home location', function () {
-    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1]);
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB']);
 
     $this->actingAs($user)->patch('/settings/alerts', [
-        'home_location_name' => null, 'home_lat' => null, 'home_lng' => null, 'radius_miles' => 50, 'notify_email' => true,
+        'home_location_name' => null, 'home_lat' => null, 'home_lng' => null, 'home_country_code' => null, 'radius_miles' => 50, 'nearby_mode' => 'country', 'notify_email' => true,
     ])->assertSessionHasNoErrors();
 
-    expect($user->fresh()->home_lat)->toBeNull();
+    expect($user->fresh()->home_lat)->toBeNull()->and($user->fresh()->home_country_code)->toBeNull();
 });
 
 it('validates alert settings', function (array $input, string $errorField) {
-    $valid = ['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'radius_miles' => 50, 'notify_email' => true];
+    $valid = ['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB', 'radius_miles' => 50, 'nearby_mode' => 'radius', 'notify_email' => true];
 
     $this->actingAs(User::factory()->create())
         ->patch('/settings/alerts', [...$valid, ...$input])
@@ -68,6 +74,11 @@ it('validates alert settings', function (array $input, string $errorField) {
     'longitude out of range' => [['home_lng' => -181], 'home_lng'],
     'name without coordinates' => [['home_lat' => null, 'home_lng' => null], 'home_lat'],
     'coordinates without name' => [['home_location_name' => null], 'home_location_name'],
+    'unknown nearby mode' => [['nearby_mode' => 'planet'], 'nearby_mode'],
+    'nearby mode missing' => [['nearby_mode' => null], 'nearby_mode'],
+    'country code too long' => [['home_country_code' => 'GBR'], 'home_country_code'],
+    'country code too short' => [['home_country_code' => 'G'], 'home_country_code'],
+    'country code not letters' => [['home_country_code' => 'G1'], 'home_country_code'],
     'email flag missing' => [['notify_email' => null], 'notify_email'],
 ]);
 
@@ -181,9 +192,27 @@ it('keeps other users and their follows when an account is deleted', function ()
 it('keeps the existing location when a patch omits the location keys', function () {
     $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1]);
 
-    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 100, 'notify_email' => true])
+    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 100, 'nearby_mode' => 'radius', 'notify_email' => true])
         ->assertSessionHasNoErrors();
 
     $user->refresh();
     expect($user->home_location_name)->toBe('Leicester')->and($user->home_lat)->toBe(52.6)->and($user->radius_miles)->toBe(100);
+});
+
+it('allows country mode without a home location', function () {
+    $user = User::factory()->create(['nearby_mode' => 'radius']);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 50, 'nearby_mode' => 'country', 'notify_email' => true])
+        ->assertSessionHasNoErrors();
+
+    expect($user->fresh()->nearby_mode)->toBe('country');
+});
+
+it('keeps the existing country code when a patch omits it', function () {
+    $user = User::factory()->create(['home_location_name' => 'Leicester', 'home_lat' => 52.6, 'home_lng' => -1.1, 'home_country_code' => 'GB']);
+
+    $this->actingAs($user)->patch('/settings/alerts', ['radius_miles' => 50, 'nearby_mode' => 'country', 'notify_email' => true])
+        ->assertSessionHasNoErrors();
+
+    expect($user->fresh()->home_country_code)->toBe('GB');
 });

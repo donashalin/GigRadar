@@ -4,12 +4,13 @@ import InputError from '@/components/InputError.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 interface Place {
     name: string;
     lat: number;
     lng: number;
+    countryCode: string | null;
 }
 
 const props = defineProps<{
@@ -17,7 +18,9 @@ const props = defineProps<{
         homeLocationName: string | null;
         homeLat: number | null;
         homeLng: number | null;
+        homeCountryCode: string | null;
         radiusMiles: number;
+        nearbyMode: 'country' | 'radius';
         notifyEmail: boolean;
     };
     radiusOptions: number[];
@@ -27,7 +30,9 @@ const form = useForm({
     home_location_name: props.settings.homeLocationName,
     home_lat: props.settings.homeLat,
     home_lng: props.settings.homeLng,
+    home_country_code: props.settings.homeCountryCode,
     radius_miles: props.settings.radiusMiles,
+    nearby_mode: props.settings.nearbyMode,
     notify_email: props.settings.notifyEmail,
 });
 
@@ -40,6 +45,19 @@ let searchController: AbortController | undefined;
 let reverseController: AbortController | undefined;
 let lookupId = 0;
 const previous = ref<Place | null>(null);
+
+const countryName = computed(() => {
+    const code = form.home_country_code;
+    if (!code) {
+        return null;
+    }
+    try {
+        return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code;
+    } catch {
+        return code;
+    }
+});
+const countryLabel = computed(() => `Anywhere in ${countryName.value ?? 'my country'}`);
 
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
     const response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
@@ -93,17 +111,19 @@ function choose(place: Place) {
     form.home_location_name = place.name;
     form.home_lat = place.lat;
     form.home_lng = place.lng;
+    form.home_country_code = place.countryCode ?? null;
     placeQuery.value = '';
     places.value = [];
 }
 
 function clearLocation() {
     if (form.home_location_name && form.home_lat !== null && form.home_lng !== null) {
-        previous.value = { name: form.home_location_name, lat: form.home_lat, lng: form.home_lng };
+        previous.value = { name: form.home_location_name, lat: form.home_lat, lng: form.home_lng, countryCode: form.home_country_code };
     }
     form.home_location_name = null;
     form.home_lat = null;
     form.home_lng = null;
+    form.home_country_code = null;
 }
 
 function cancelChange() {
@@ -116,6 +136,7 @@ function cancelChange() {
         form.home_location_name = previous.value.name;
         form.home_lat = previous.value.lat;
         form.home_lng = previous.value.lng;
+        form.home_country_code = previous.value.countryCode;
     }
     previous.value = null;
     placeQuery.value = '';
@@ -237,20 +258,35 @@ function save() {
                 </section>
 
                 <section class="space-y-3">
-                    <HeadingSmall title="Distance" description="How far you'd travel for a gig." />
-                    <div class="grid grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-900" role="group" aria-label="Distance in miles">
+                    <HeadingSmall title="Distance" description="Which gigs count as near you." />
+                    <div class="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-5 dark:bg-neutral-900" role="group" aria-label="Distance">
+                        <button
+                            type="button"
+                            class="col-span-3 min-h-11 rounded-lg px-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 sm:col-span-1"
+                            :class="form.nearby_mode === 'country' ? 'bg-white shadow dark:bg-neutral-700' : 'text-neutral-600 dark:text-neutral-400'"
+                            :aria-pressed="form.nearby_mode === 'country'"
+                            @click="form.nearby_mode = 'country'"
+                        >
+                            {{ countryLabel }}
+                        </button>
                         <button
                             v-for="miles in radiusOptions"
                             :key="miles"
                             type="button"
                             class="min-h-11 rounded-lg text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-                            :class="form.radius_miles === miles ? 'bg-white shadow dark:bg-neutral-700' : 'text-neutral-600 dark:text-neutral-400'"
-                            :aria-pressed="form.radius_miles === miles"
-                            @click="form.radius_miles = miles"
+                            :class="form.nearby_mode === 'radius' && form.radius_miles === miles ? 'bg-white shadow dark:bg-neutral-700' : 'text-neutral-600 dark:text-neutral-400'"
+                            :aria-pressed="form.nearby_mode === 'radius' && form.radius_miles === miles"
+                            @click="
+                                form.nearby_mode = 'radius';
+                                form.radius_miles = miles;
+                            "
                         >
                             {{ miles }} mi
                         </button>
                     </div>
+                    <p v-if="form.nearby_mode === 'country' && !form.home_country_code" class="text-sm text-neutral-500">
+                        {{ form.home_location_name ? 'Re-pick your home location to use this.' : 'Set your home location so we know which country.' }}
+                    </p>
                     <InputError :message="form.errors.radius_miles" />
                 </section>
 
