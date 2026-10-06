@@ -182,3 +182,45 @@ it('skips events missing an id or name', function () {
 
     expect($concerts)->toHaveCount(1)->and($concerts[0]->id)->toBe('E1');
 });
+
+it('maps genre and sub-genre classifications', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/attractions/K8vZ917G1V0.json*' => Http::response(tmFixture('attraction'))]);
+
+    $artist = app(TicketmasterClient::class)->attraction('K8vZ917G1V0');
+
+    expect($artist->genreId)->toBe('KnvZfZ7vAvv')
+        ->and($artist->genreName)->toBe('Alternative')
+        ->and($artist->subGenreId)->toBe('KZazBEonSMnZfZ7vAde')
+        ->and($artist->subGenreName)->toBe('Alternative Rock');
+});
+
+it('leaves classifications null when missing', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['id' => 'A1', 'name' => 'Nobody'])]);
+
+    $artist = app(TicketmasterClient::class)->attraction('A1');
+
+    expect($artist->genreId)->toBeNull()->and($artist->subGenreId)->toBeNull();
+});
+
+it('ignores malformed classifications', function () {
+    Http::fake(['app.ticketmaster.com/*' => Http::response([
+        'id' => 'A1', 'name' => 'Odd',
+        'classifications' => [['genre' => ['id' => 123, 'name' => ['x']], 'subGenre' => 'nope']],
+    ])]);
+
+    $artist = app(TicketmasterClient::class)->attraction('A1');
+
+    expect($artist->genreId)->toBeNull()->and($artist->genreName)->toBeNull()
+        ->and($artist->subGenreId)->toBeNull()->and($artist->subGenreName)->toBeNull();
+
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['id' => 'A2', 'name' => 'Odder', 'classifications' => 'x'])]);
+    expect(app(TicketmasterClient::class)->attraction('A2')->genreId)->toBeNull();
+});
+
+it('maps classifications in search results', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/attractions.json*' => Http::response(tmFixture('attractions-search'))]);
+
+    $results = app(TicketmasterClient::class)->searchAttractions('fontaines');
+
+    expect($results[0]->subGenreName)->toBe('Alternative Rock')->and($results[1]->subGenreId)->toBeNull();
+});

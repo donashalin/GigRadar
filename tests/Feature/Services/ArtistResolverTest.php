@@ -23,3 +23,14 @@ it('creates an unseeded artist from Ticketmaster when unknown', function () {
         ->and($artist->seeded)->toBeFalse()
         ->and($artist->last_checked_at)->toBeNull();
 });
+
+it('stores classifications when creating an artist', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/attractions/K8vZ917G1V0.json*' => Http::response(tmFixture('attraction'))]);
+
+    $artist = app(ArtistResolver::class)->resolve('K8vZ917G1V0')->fresh();
+
+    expect($artist->genre_id)->toBe('KnvZfZ7vAvv')
+        ->and($artist->genre_name)->toBe('Alternative')
+        ->and($artist->sub_genre_id)->toBe('KZazBEonSMnZfZ7vAde')
+        ->and($artist->sub_genre_name)->toBe('Alternative Rock');
+});

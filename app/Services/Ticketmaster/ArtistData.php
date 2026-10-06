@@ -8,5 +8,9 @@ final readonly class ArtistData
         public string $id,
         public string $name,
         public ?string $imageUrl,
+        public ?string $genreId = null,
+        public ?string $genreName = null,
+        public ?string $subGenreId = null,
+        public ?string $subGenreName = null,
     ) {}
 }

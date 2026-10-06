@@ -21,7 +21,14 @@ class ArtistResolver
 
         return Artist::createOrFirst(
             ['ticketmaster_id' => $ticketmasterId],
-            ['name' => $data->name, 'image_url' => $data->imageUrl],
+            [
+                'name' => $data->name,
+                'image_url' => $data->imageUrl,
+                'genre_id' => $data->genreId,
+                'genre_name' => $data->genreName,
+                'sub_genre_id' => $data->subGenreId,
+                'sub_genre_name' => $data->subGenreName,
+            ],
         );
     }
 }
