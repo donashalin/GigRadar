@@ -10,6 +10,9 @@ use Throwable;
 
 class SimilarRoundup extends Command
 {
+    /** The roundup is not capped by the Discover tab's per-group display limit. */
+    private const GROUP_LIMIT = 200;
+
     protected $signature = 'gigradar:similar-roundup';
 
     protected $description = 'Send opted-in users a roundup of new gigs that match their taste';
@@ -17,20 +20,20 @@ class SimilarRoundup extends Command
     public function handle(DiscoverFeed $feed): int
     {
         $sent = 0;
-        $since = now()->subDays(7);
 
-        User::where('notify_similar', true)->chunkById(100, function ($users) use ($feed, $since, &$sent) {
+        User::where('notify_similar', true)->chunkById(100, function ($users) use ($feed, &$sent) {
             foreach ($users as $user) {
                 try {
-                    $items = collect($feed->for($user, $since))->flatMap(fn (array $group) => $group['items'])->values()->all();
+                    $since = max($user->similar_roundup_at ?? now()->subDays(7), now()->subDays(14));
+                    $groups = $feed->for($user, $since, self::GROUP_LIMIT, excludeSeed: true);
+                    $items = collect($groups)->flatMap(fn (array $group) => $group['items'])->values()->all();
 
-                    if ($items === []) {
-                        continue;
+                    if ($items !== []) {
+                        $user->notify(new SimilarGigsRoundup($items));
+                        $sent++;
                     }
 
-                    $notification = new SimilarGigsRoundup($items);
-                    $user->notify($notification);
-                    $sent++;
+                    $user->forceFill(['similar_roundup_at' => now()])->save();
                 } catch (Throwable $e) {
                     report($e);
                 }

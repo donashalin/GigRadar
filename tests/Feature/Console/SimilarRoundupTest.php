@@ -84,6 +84,50 @@ it('keeps going when one user fails', function () {
     Notification::assertNotSentTo($first, SimilarGigsRoundup::class);
 });
 
+it('does not repeat items after an earlier run and records the run', function () {
+    $user = roundupUser();
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Shame', 'first_seen_at' => now()->subDays(3)]);
+
+    $this->artisan('gigradar:similar-roundup')->assertSuccessful();
+    expect($user->fresh()->similar_roundup_at)->not->toBeNull();
+
+    $this->travel(2)->days();
+    $this->artisan('gigradar:similar-roundup')->expectsOutput('Sent 0 roundups.')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, SimilarGigsRoundup::class, 1);
+});
+
+it('advances the window even when nothing was new', function () {
+    $user = roundupUser();
+
+    $this->artisan('gigradar:similar-roundup')->assertSuccessful();
+
+    expect($user->fresh()->similar_roundup_at)->not->toBeNull();
+});
+
+it('covers a skipped week but never more than 14 days', function () {
+    $user = roundupUser(['similar_roundup_at' => now()->subDays(12)]);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Gap', 'first_seen_at' => now()->subDays(10)]);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'TooOld', 'first_seen_at' => now()->subDays(13), 'attraction_ticketmaster_id' => 'K8old']);
+    $this->artisan('gigradar:similar-roundup')->assertSuccessful();
+    Notification::assertSentTo($user, SimilarGigsRoundup::class, fn ($n) => array_column($n->items, 'attractionName') === ['Gap']);
+
+    $stale = roundupUser(['similar_roundup_at' => now()->subDays(40)]);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Ancient', 'first_seen_at' => now()->subDays(20)]);
+    $this->artisan('gigradar:similar-roundup')->assertSuccessful();
+    Notification::assertNotSentTo($stale, SimilarGigsRoundup::class, fn ($n) => in_array('Ancient', array_column($n->items, 'attractionName')));
+});
+
+it('excludes seed rows and is not capped by the display limit', function () {
+    $user = roundupUser();
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Seeded', 'from_seed' => true]);
+    DiscoveryEvent::factory()->count(12)->create();
+
+    $this->artisan('gigradar:similar-roundup')->assertSuccessful();
+
+    Notification::assertSentTo($user, SimilarGigsRoundup::class, fn ($n) => count($n->items) === 12 && ! in_array('Seeded', array_column($n->items, 'attractionName')));
+});
+
 it('is scheduled Fridays at 18:00 Europe/London', function () {
     $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command, 'gigradar:similar-roundup'));

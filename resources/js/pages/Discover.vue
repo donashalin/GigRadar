@@ -172,7 +172,6 @@ function undoDismiss() {
 }
 
 const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
-const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass}`;
 </script>
 
 <template>
@@ -183,17 +182,28 @@ const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass
 
             <div v-if="!hasFollows" class="rounded-xl bg-white p-6 text-center dark:bg-neutral-900">
                 <p class="font-medium">Follow a few artists to get recommendations.</p>
-                <Link href="/search" class="mt-4 inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 text-sm font-medium text-white" :class="focusClass">
+                <Link
+                    href="/search"
+                    class="mt-4 inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 text-sm font-medium text-white"
+                    :class="focusClass"
+                >
                     Find artists
                 </Link>
             </div>
             <div v-else-if="!hasArea" class="rounded-xl bg-white p-6 text-center dark:bg-neutral-900">
                 <p class="font-medium">Set your home location to see gigs near you.</p>
-                <Link href="/settings/location" class="mt-4 inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 text-sm font-medium text-white" :class="focusClass">
+                <Link
+                    href="/settings/location"
+                    class="mt-4 inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 text-sm font-medium text-white"
+                    :class="focusClass"
+                >
                     Set home location
                 </Link>
             </div>
-            <p v-else-if="visibleGroups.length === 0" class="rounded-xl bg-white p-6 text-center text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+            <p
+                v-else-if="visibleGroups.length === 0"
+                class="rounded-xl bg-white p-6 text-center text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300"
+            >
                 No matching gigs near you yet — check back soon.
             </p>
 
@@ -201,7 +211,12 @@ const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass
                 <h2 :id="`group-${group.id}`" class="px-1 text-lg font-semibold">{{ group.name }}</h2>
                 <p class="px-1 pb-2 text-sm text-neutral-500 dark:text-neutral-400">{{ because(group.artists) }}</p>
                 <ul class="divide-y divide-neutral-200 overflow-hidden rounded-xl bg-white dark:divide-neutral-800 dark:bg-neutral-900">
-                    <li v-for="(item, index) in group.items" :key="item.attractionId" :data-attraction="item.attractionId" class="flex items-center gap-3 px-4 py-3">
+                    <li
+                        v-for="(item, index) in group.items"
+                        :key="item.attractionId"
+                        :data-attraction="item.attractionId"
+                        class="flex items-center gap-3 px-4 py-3"
+                    >
                         <img v-if="item.imageUrl" :src="item.imageUrl" alt="" class="size-12 shrink-0 rounded-lg object-cover" />
                         <div v-else class="size-12 shrink-0 rounded-lg bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
                         <div class="min-w-0 flex-1">
@@ -248,7 +263,7 @@ const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass
         >
             <div
                 v-if="undo"
-                class="pointer-events-auto flex min-h-12 items-center gap-3 rounded-xl bg-neutral-900 py-1 pr-1 pl-4 text-sm text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
+                class="pointer-events-auto flex min-h-12 items-center gap-3 rounded-xl bg-neutral-900 py-1 pl-4 pr-1 text-sm text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
                 @pointerenter="pauseUndoTimer"
                 @pointerleave="resumeUndoTimer"
                 @focusin="pauseUndoTimer"

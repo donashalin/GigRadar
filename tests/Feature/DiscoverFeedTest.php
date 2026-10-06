@@ -172,3 +172,24 @@ it('does not show foreign events without coordinates to a radius-mode user', fun
 
     expect(array_column(dfFeed($user)[0]['items'], 'attractionName'))->toBe(['British']);
 });
+
+it('can exclude seed rows', function () {
+    $user = dfUser();
+    dfFollow($user);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Seeded', 'from_seed' => true]);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Fresh', 'from_seed' => false]);
+
+    $names = fn (array $g) => collect($g)->flatMap(fn ($x) => array_column($x['items'], 'attractionName'))->sort()->values()->all();
+
+    expect($names(dfFeed($user)))->toBe(['Fresh', 'Seeded'])
+        ->and($names(app(DiscoverFeed::class)->for($user, null, 10, true)))->toBe(['Fresh']);
+});
+
+it('honours a custom group limit', function () {
+    $user = dfUser();
+    dfFollow($user);
+    DiscoveryEvent::factory()->count(12)->create();
+
+    expect(dfFeed($user)[0]['items'])->toHaveCount(10)
+        ->and(app(DiscoverFeed::class)->for($user, null, 200)[0]['items'])->toHaveCount(12);
+});

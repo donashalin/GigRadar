@@ -11,12 +11,12 @@ use Carbon\CarbonInterface;
 /** Builds a user's Discover feed: nearby gigs by artists in the same classifications as the ones they follow. */
 class DiscoverFeed
 {
-    private const GROUP_LIMIT = 10;
+    public const GROUP_LIMIT = 10;
 
     /**
      * @return list<array{id: string, name: string, artists: list<string>, items: list<array<string, mixed>>}>
      */
-    public function for(User $user, ?CarbonInterface $firstSeenSince = null): array
+    public function for(User $user, ?CarbonInterface $firstSeenSince = null, int $groupLimit = self::GROUP_LIMIT, bool $excludeSeed = false): array
     {
         $area = NearbyArea::forUser($user);
         $followed = $user->artists()->get();
@@ -36,6 +36,7 @@ class DiscoverFeed
             ->where('status', '!=', 'cancelled')
             ->when($area->homeCountryCode !== null, fn ($q) => $q->where('country', $area->homeCountryCode))
             ->when($excluded !== [], fn ($q) => $q->whereNotIn('attraction_ticketmaster_id', $excluded))
+            ->when($excludeSeed, fn ($q) => $q->where('from_seed', false))
             ->when($firstSeenSince, fn ($q) => $q->where('first_seen_at', '>=', $firstSeenSince))
             ->get()
             ->filter(fn (DiscoveryEvent $e) => $area->contains($e->country, $e->lat, $e->lng) !== false)
@@ -49,7 +50,7 @@ class DiscoverFeed
 
             // Events are already soonest first, so the first hit per attraction is its soonest gig.
             foreach ($events->get($bucket['id'], []) as $event) {
-                if (count($items) >= self::GROUP_LIMIT) {
+                if (count($items) >= $groupLimit) {
                     break;
                 }
                 $attractionId = $event->attraction_ticketmaster_id;

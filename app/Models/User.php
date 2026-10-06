@@ -60,6 +60,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'radius_miles' => 'integer',
             'notify_email' => 'boolean',
             'notify_similar' => 'boolean',
+            'similar_roundup_at' => 'datetime',
         ];
     }
 

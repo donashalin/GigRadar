@@ -59,3 +59,14 @@ it('does not send when there are no items', function () {
     expect((new SimilarGigsRoundup([]))->shouldSend(User::factory()->create(), 'mail'))->toBeFalse()
         ->and((new SimilarGigsRoundup([roundupItem('A', 'B', '2027-01-01')]))->shouldSend(User::factory()->create(), 'mail'))->toBeTrue();
 });
+
+it('drops the city when it is empty', function () {
+    $items = [roundupItem('Shame', '', '2027-03-14')];
+    $n = new SimilarGigsRoundup($items);
+
+    expect($n->summary())->toBe('New gig that matches your taste: Shame – 14 Mar')
+        ->and($n->toMail(User::factory()->create())->introLines[1])->toBe('14 Mar 2027 — Shame');
+
+    expect((new SimilarGigsRoundup([...$items, roundupItem('Other', '', '2027-04-01')]))->summary())
+        ->toBe('2 new gigs that match your taste — Shame and 1 more');
+});

@@ -138,3 +138,28 @@ it('still prints the summary when pruning fails', function () {
         ->expectsOutput('Fetched 1 classifications, stored 2 new gigs, 1 failures.')
         ->assertSuccessful();
 });
+
+it('marks rows from the first-ever fetch of a pair as seed, and later new rows as not', function () {
+    fakeDiscovery();
+    vibeUser(['S1']);
+
+    $this->artisan('gigradar:discover');
+    expect(DiscoveryEvent::where('from_seed', true)->count())->toBe(2);
+
+    // The pair now has rows (GB), so a gig appearing later is genuinely new.
+    DiscoveryEvent::where('ticketmaster_event_id', 'D5vYZ9disc001')->delete();
+    DiscoveryEvent::factory()->create(['classification_id' => 'S1', 'country' => 'GB', 'from_seed' => true]);
+    $this->artisan('gigradar:discover');
+
+    expect(DiscoveryEvent::where('ticketmaster_event_id', 'D5vYZ9disc001')->value('from_seed'))->toBeFalse();
+});
+
+it('treats a pair as seeded per classification and country', function () {
+    fakeDiscovery();
+    vibeUser(['S1']);
+    DiscoveryEvent::factory()->create(['classification_id' => 'S1', 'country' => 'IE', 'from_seed' => false]);
+
+    $this->artisan('gigradar:discover');
+
+    expect(DiscoveryEvent::where('classification_id', 'S1')->where('country', 'GB')->where('from_seed', true)->count())->toBeGreaterThan(0);
+});

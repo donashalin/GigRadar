@@ -41,9 +41,11 @@ class Discover extends Command
             }
 
             $fetched++;
+            // The first-ever fetch of a pair bulk-loads the whole backlog, which is not "new" to anyone.
+            $seed = ! DiscoveryEvent::where('classification_id', $classificationId)->where('country', $country)->exists();
             foreach ($events as $event) {
                 try {
-                    $created += $this->upsert($classificationId, $event) ? 1 : 0;
+                    $created += $this->upsert($classificationId, $event, $seed) ? 1 : 0;
                 } catch (Throwable $e) {
                     report($e);
                     $failures++;
@@ -67,7 +69,7 @@ class Discover extends Command
     }
 
     /** Returns true when a new row was inserted. */
-    private function upsert(string $classificationId, DiscoveryEventData $data): bool
+    private function upsert(string $classificationId, DiscoveryEventData $data, bool $seed = false): bool
     {
         $c = $data->concert;
         $values = [
@@ -90,6 +92,7 @@ class Discover extends Command
         $isNew = ! $row->exists;
         if ($isNew) {
             $row->first_seen_at = now();
+            $row->from_seed = $seed;
         }
         $row->fill($values)->save();
 

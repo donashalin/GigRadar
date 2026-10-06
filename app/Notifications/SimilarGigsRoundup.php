@@ -56,10 +56,11 @@ class SimilarGigsRoundup extends Notification implements ShouldQueue
         $items = $this->sorted();
         $first = $items[0];
         $count = count($items);
+        $where = ($first['city'] ?? '') !== '' ? " in {$first['city']}" : '';
 
         return $count === 1
-            ? "New gig that matches your taste: {$first['attractionName']} in {$first['city']} – {$this->date($first, 'j M')}"
-            : "{$count} new gigs that match your taste — {$first['attractionName']} in {$first['city']} and ".($count - 1).' more';
+            ? "New gig that matches your taste: {$first['attractionName']}{$where} – {$this->date($first, 'j M')}"
+            : "{$count} new gigs that match your taste — {$first['attractionName']}{$where} and ".($count - 1).' more';
     }
 
     public function toMail(User $user): MailMessage
@@ -70,7 +71,7 @@ class SimilarGigsRoundup extends Notification implements ShouldQueue
             ->line($this->summary());
 
         foreach (array_slice($this->sorted(), 0, self::MAIL_LIMIT) as $item) {
-            $mail->line("{$this->date($item, 'j M Y')} — {$item['attractionName']}, {$item['city']}");
+            $mail->line("{$this->date($item, 'j M Y')} — ".collect([$item['attractionName'], $item['city'] ?? null])->filter()->implode(', '));
         }
 
         return $mail

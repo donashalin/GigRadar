@@ -17,63 +17,36 @@ const props = defineProps<{
 const { appearance } = useAppearance();
 const appearanceLabel = computed(() => ({ light: 'Light', dark: 'Dark', system: 'System' })[appearance.value]);
 
-// Optimistic value shown while a save is in flight; reverts if the save fails.
-const pending = ref(false);
-const emailError = ref(false);
-const optimisticEmail = ref<boolean | null>(null);
-const emailOn = computed(() => optimisticEmail.value ?? props.alerts.notifyEmail);
+// Optimistic values shown while a save is in flight; they revert if the save fails.
+type AlertKey = 'notify_email' | 'notify_similar';
 
-function toggleEmail() {
-    if (pending.value) {
+const alertSaving = ref(false);
+const alertErrors = ref<Record<AlertKey, boolean>>({ notify_email: false, notify_similar: false });
+const optimistic = ref<Record<AlertKey, boolean | null>>({ notify_email: null, notify_similar: null });
+const emailOn = computed(() => optimistic.value.notify_email ?? props.alerts.notifyEmail);
+const similarOn = computed(() => optimistic.value.notify_similar ?? props.alerts.notifySimilar);
+
+function toggleAlert(key: AlertKey) {
+    if (alertSaving.value) {
         return;
     }
-    const next = !emailOn.value;
-    pending.value = true;
-    emailError.value = false;
-    optimisticEmail.value = next;
+    const next = !(key === 'notify_email' ? emailOn.value : similarOn.value);
+    alertSaving.value = true;
+    alertErrors.value[key] = false;
+    optimistic.value[key] = next;
     router.patch(
         '/settings/alerts',
-        { notify_email: next },
+        { [key]: next },
         {
             preserveScroll: true,
             preserveState: true,
             onError: () => {
-                optimisticEmail.value = null;
-                emailError.value = true;
+                optimistic.value[key] = null;
+                alertErrors.value[key] = true;
             },
             onFinish: () => {
-                pending.value = false;
-                optimisticEmail.value = null;
-            },
-        },
-    );
-}
-
-const similarError = ref(false);
-const optimisticSimilar = ref<boolean | null>(null);
-const similarOn = computed(() => optimisticSimilar.value ?? props.alerts.notifySimilar);
-
-function toggleSimilar() {
-    if (pending.value) {
-        return;
-    }
-    const next = !similarOn.value;
-    pending.value = true;
-    similarError.value = false;
-    optimisticSimilar.value = next;
-    router.patch(
-        '/settings/alerts',
-        { notify_similar: next },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onError: () => {
-                optimisticSimilar.value = null;
-                similarError.value = true;
-            },
-            onFinish: () => {
-                pending.value = false;
-                optimisticSimilar.value = null;
+                alertSaving.value = false;
+                optimistic.value[key] = null;
             },
         },
     );
@@ -149,12 +122,16 @@ async function logout() {
             <SettingsGroup title="Alerts">
                 <SettingsRow label="Home location" :value="alerts.homeLocationName ?? 'Not set'" href="/settings/location" />
                 <SettingsRow label="Near me" :value="alerts.nearbySummary" href="/settings/near-me" />
-                <SettingsRow label="Hidden artists" :value="String(hiddenCount)" href="/settings/hidden-artists" />
                 <SettingsRow label="Email alerts" label-id="email-alerts-label">
-                    <SettingsSwitch :checked="emailOn" labelledby="email-alerts-label" :disabled="pending" @toggle="toggleEmail" />
+                    <SettingsSwitch
+                        :checked="emailOn"
+                        labelledby="email-alerts-label"
+                        :disabled="alertSaving"
+                        @toggle="toggleAlert('notify_email')"
+                    />
                 </SettingsRow>
-                <p role="alert" :class="emailError && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
-                    {{ emailError ? "Couldn't save — try again." : '' }}
+                <p role="alert" :class="alertErrors.notify_email && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
+                    {{ alertErrors.notify_email ? "Couldn't save — try again." : '' }}
                 </p>
 
                 <template v-if="push.needsInstall">
@@ -183,16 +160,25 @@ async function logout() {
                     <p role="alert" :class="pushMessage && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">{{ pushMessage }}</p>
                 </template>
 
-                <SettingsRow label="Similar artists" sublabel="Weekly roundup of gigs that match your taste" label-id="similar-alerts-label">
-                    <SettingsSwitch :checked="similarOn" labelledby="similar-alerts-label" :disabled="pending" @toggle="toggleSimilar" />
-                </SettingsRow>
-                <p role="alert" :class="similarError && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
-                    {{ similarError ? "Couldn't save — try again." : '' }}
-                </p>
-
                 <SettingsRow label="Send a test alert" action :aria-disabled="testBlocked" @click="sendTestAlert" />
                 <p role="status" :class="successText && 'px-4 py-2'" class="text-sm text-green-700 dark:text-green-400">{{ successText }}</p>
                 <p role="alert" :class="errorText && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">{{ errorText }}</p>
+            </SettingsGroup>
+
+            <SettingsGroup title="Discover">
+                <SettingsRow label="Similar artists" sublabel="Weekly roundup of gigs that match your taste" label-id="similar-alerts-label">
+                    <SettingsSwitch
+                        :checked="similarOn"
+                        labelledby="similar-alerts-label"
+                        :disabled="alertSaving"
+                        @toggle="toggleAlert('notify_similar')"
+                    />
+                </SettingsRow>
+                <p role="alert" :class="alertErrors.notify_similar && 'px-4 py-2'" class="text-sm text-red-600 dark:text-red-400">
+                    {{ alertErrors.notify_similar ? "Couldn't save — try again." : '' }}
+                </p>
+
+                <SettingsRow label="Hidden artists" :value="String(hiddenCount)" href="/settings/hidden-artists" />
             </SettingsGroup>
 
             <SettingsGroup title="Account">
