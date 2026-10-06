@@ -54,10 +54,10 @@ Mobile-first layout with a fixed bottom tab bar: **My Artists**, **Search**, **S
 1. **Welcome / Login / Register / Forgot password** — starter kit pages. Unverified users are redirected to the verify-email notice.
 2. **Search** — text input, 300 ms debounce, minimum 2 characters; results show image, name, and Follow button.
 3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed; "Get tickets" opens `ticket_url` in a new tab). Follow/Unfollow button. Alert scope toggle (`Everywhere` / `Near me`), shown only when following. Viewing updates the follow's `last_seen_at`.
-4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any upcoming, non-cancelled concert has `from_seed = false` and `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's radius; without a home location it shows a prompt linking to alert settings.
+4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any upcoming, non-cancelled concert has `from_seed = false` and `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's area (home country, or radius in miles); without a home location it shows a prompt linking to alert settings.
 5. **Settings**
    - Home location: type a city (Nominatim lookup) or "Use my current location" (Geolocation API).
-   - Radius: 25 / 50 / 100 / 250 miles (default 50).
+   - Distance: **Anywhere in <country>** (default; country taken from the home location) or 25 / 50 / 100 / 250 miles.
    - Alert channels: Email on/off; "Push on this device" on/off (requests browser permission, stores/removes this device's subscription).
    - Sign out; Delete account (confirmation step; removes user, follows, push subscriptions).
 
@@ -76,7 +76,9 @@ users
   home_location_name  varchar null
   home_lat            decimal(10,7) null
   home_lng            decimal(10,7) null
-  radius_miles        smallint unsigned default 50   -- 25 | 50 | 100 | 250
+  radius_miles        smallint unsigned default 50   -- 25 | 50 | 100 | 250 (used when nearby_mode = radius)
+  home_country_code   char(2) null                   -- ISO 3166-1 alpha-2 from the home location, e.g. GB
+  nearby_mode         enum('country','radius') default 'country' -- "near me" = anywhere in home country, or within radius_miles
   notify_email        boolean default true
   notify_push         boolean default true
 
@@ -143,7 +145,7 @@ Alerts are driven by `concerts.alerted_at`, not by which sync first saw a concer
 3. Pending concerts for the artist = `seeded` artist's concerts with `alerted_at IS NULL`. Stamp pending concerts whose status is `cancelled` as alerted without notifying. If none remain, continue.
 4. Load followers with pivot and location. `RecipientSelector`:
    - `everywhere` → alert.
-   - `nearby` → alert if `Geo::distanceMiles(venue, home) ≤ radius_miles`; if user has no home location or event has no coordinates, alert.
+   - `nearby` → if `nearby_mode = country`: alert if the concert's country equals `home_country_code`; if `nearby_mode = radius`: alert if `Geo::distanceMiles(venue, home) ≤ radius_miles`. If the user has no home location (or no country code in country mode, or the concert has no coordinates in radius mode), alert.
 5. For each selected user: `$user->notify(new NewTourDates($artist, $concertsForUser))` — **one notification per artist per user per run**.
    - Subject/title: "{Artist} announced new dates"
    - Body: "{N} new date(s), including {city} – {d M}" (earliest qualifying concert)
