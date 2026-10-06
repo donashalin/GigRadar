@@ -46,10 +46,10 @@ function because(artists: string[]): string {
 const rootEl = ref<HTMLElement | null>(null);
 const error = ref('');
 
-// Follow
+// Follow (a normal visit; dismissals are async so they never interrupt it)
 const followPendingId = ref<string | null>(null);
 
-function follow(item: Item) {
+function follow(item: Item, group: Group, index: number) {
     if (followPendingId.value !== null) return;
     followPendingId.value = item.attractionId;
     error.value = '';
@@ -62,6 +62,7 @@ function follow(item: Item) {
             only: ['groups', 'hasFollows', 'flash'],
             onSuccess: () => {
                 error.value = page.props.flash?.error ?? '';
+                refocus(index, group.id, item.attractionId);
             },
             onFinish: () => {
                 followPendingId.value = null;
@@ -73,36 +74,65 @@ function follow(item: Item) {
 // Not interested, with a short Undo window
 const undo = ref<{ id: string; name: string } | null>(null);
 const undoBusy = ref(false);
+const dismissing = ref<Set<string>>(new Set()); // dismissals whose POST is still in flight
 let undoTimer: ReturnType<typeof setTimeout> | undefined;
 onBeforeUnmount(() => clearTimeout(undoTimer));
 
-/** Move focus to the row now occupying the slot of the one that disappeared, else the page heading area. */
-async function refocus(rowIndex: number, groupId: string) {
+const undoDisabled = computed(() => undoBusy.value || (undo.value !== null && dismissing.value.has(undo.value.id)));
+
+function startUndoTimer() {
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => (undo.value = null), UNDO_MS);
+}
+const pauseUndoTimer = () => clearTimeout(undoTimer);
+const resumeUndoTimer = () => {
+    if (undo.value) startUndoTimer();
+};
+
+/** Move focus to the row now in the slot of the one that went away, else the page container. */
+async function refocus(rowIndex: number, groupId: string, onlyIfGone?: string) {
     await nextTick();
+    if (onlyIfGone && rootEl.value?.querySelector(`[data-attraction="${onlyIfGone}"]`)) return;
     const group = rootEl.value?.querySelector<HTMLElement>(`[data-group="${groupId}"]`);
     const links = group?.querySelectorAll<HTMLElement>('[data-row-link]');
     const target = links && links.length > 0 ? links[Math.min(rowIndex, links.length - 1)] : null;
     (target ?? rootEl.value)?.focus();
 }
 
+function setDismissing(id: string, on: boolean) {
+    const next = new Set(dismissing.value);
+    if (on) next.add(id);
+    else next.delete(id);
+    dismissing.value = next;
+}
+
 function dismiss(item: Item, group: Group, index: number) {
-    hidden.value = new Set(hidden.value).add(item.attractionId);
+    const id = item.attractionId;
+    hidden.value = new Set(hidden.value).add(id);
+    setDismissing(id, true);
     error.value = '';
-    clearTimeout(undoTimer);
-    undo.value = { id: item.attractionId, name: item.attractionName };
-    undoTimer = setTimeout(() => (undo.value = null), UNDO_MS);
+    undo.value = { id, name: item.attractionName };
+    startUndoTimer();
     refocus(index, group.id);
 
+    let succeeded = false;
     router.post(
         '/dismissed-artists',
-        { attraction_ticketmaster_id: item.attractionId, attraction_name: item.attractionName },
+        { attraction_ticketmaster_id: id, attraction_name: item.attractionName },
         {
+            async: true,
             preserveScroll: true,
             preserveState: true,
             only: ['flash'],
-            onError: () => {
-                unhide(item.attractionId);
-                undo.value = null;
+            onSuccess: () => {
+                succeeded = true;
+            },
+            onFinish: () => {
+                setDismissing(id, false);
+                if (succeeded) return;
+                // Validation, 429, network failure: put the row back.
+                unhide(id);
+                if (undo.value?.id === id) undo.value = null;
                 error.value = `Couldn't hide ${item.attractionName}. Please try again.`;
             },
         },
@@ -116,25 +146,27 @@ function unhide(id: string) {
 }
 
 function undoDismiss() {
-    if (!undo.value || undoBusy.value) return;
+    if (!undo.value || undoDisabled.value) return;
     const { id } = undo.value;
     undoBusy.value = true;
     clearTimeout(undoTimer);
+    let succeeded = false;
     router.delete(`/dismissed-artists/${id}`, {
+        async: true,
         preserveScroll: true,
         preserveState: true,
-        only: ['flash'],
+        only: ['groups', 'flash'],
         onSuccess: () => {
+            succeeded = true;
             unhide(id);
             undo.value = null;
             nextTick(() => rootEl.value?.querySelector<HTMLElement>(`[data-attraction="${id}"] [data-row-link]`)?.focus());
         },
-        onError: () => {
-            error.value = "Couldn't undo. Find them under Settings > Hidden artists.";
-            undo.value = null;
-        },
         onFinish: () => {
             undoBusy.value = false;
+            if (succeeded) return;
+            if (undo.value?.id === id) undo.value = null;
+            error.value = "Couldn't undo. Find them under Settings > Hidden artists.";
         },
     });
 }
@@ -181,18 +213,18 @@ const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass
                             >
                                 {{ item.attractionName }}
                             </Link>
-                            <p class="truncate text-sm text-neutral-500 dark:text-neutral-400">
+                            <p class="line-clamp-2 text-sm text-neutral-500 dark:text-neutral-400">
                                 {{ formatConcertDate(item.localDate, item.startsAt, shortDate) }} · {{ item.city
                                 }}<template v-if="item.distanceMiles !== null"> · {{ item.distanceMiles }} mi</template>
                             </p>
                         </div>
                         <button
                             type="button"
-                            class="inline-flex min-h-11 shrink-0 items-center rounded-full bg-violet-600 px-4 text-sm font-medium text-white disabled:opacity-60"
+                            class="inline-flex min-h-11 shrink-0 items-center rounded-full bg-violet-600 px-3 text-sm font-medium text-white disabled:opacity-60"
                             :class="focusClass"
                             :disabled="followPendingId !== null"
                             :aria-label="`Follow ${item.attractionName}`"
-                            @click="follow(item)"
+                            @click="follow(item, group, index)"
                         >
                             Follow
                         </button>
@@ -214,13 +246,20 @@ const linkClass = `font-medium text-violet-600 dark:text-violet-400 ${focusClass
             role="status"
             class="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl justify-center px-4"
         >
-            <div v-if="undo" class="pointer-events-auto flex min-h-12 items-center gap-3 rounded-xl bg-neutral-900 py-1 pr-1 pl-4 text-sm text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900">
+            <div
+                v-if="undo"
+                class="pointer-events-auto flex min-h-12 items-center gap-3 rounded-xl bg-neutral-900 py-1 pr-1 pl-4 text-sm text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
+                @pointerenter="pauseUndoTimer"
+                @pointerleave="resumeUndoTimer"
+                @focusin="pauseUndoTimer"
+                @focusout="resumeUndoTimer"
+            >
                 <span class="min-w-0 truncate">Hidden {{ undo.name }}</span>
                 <button
                     type="button"
                     class="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold text-violet-300 disabled:opacity-60 dark:text-violet-700"
                     :class="focusClass"
-                    :disabled="undoBusy"
+                    :disabled="undoDisabled"
                     @click="undoDismiss"
                 >
                     Undo

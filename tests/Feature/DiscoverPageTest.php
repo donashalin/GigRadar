@@ -100,3 +100,13 @@ it('shows the hidden count on the settings index', function () {
 
     $this->actingAs($user)->get('/settings')->assertInertia(fn (Assert $page) => $page->where('hiddenCount', 1));
 });
+
+it('redirects guests away from dismissal and hidden-artist routes', function () {
+    $this->post('/dismissed-artists', ['attraction_ticketmaster_id' => 'abc', 'attraction_name' => 'X'])->assertRedirect('/login');
+    $this->delete('/dismissed-artists/abc')->assertRedirect('/login');
+    $this->get('/settings/hidden-artists')->assertRedirect('/login');
+});
+
+it('404s when un-hiding with a non-alphanumeric id', function () {
+    $this->actingAs(User::factory()->create())->delete('/dismissed-artists/a.b')->assertNotFound();
+});
