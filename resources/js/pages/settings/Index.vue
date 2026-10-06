@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import SettingsGroup from '@/components/settings/SettingsGroup.vue';
 import SettingsRow from '@/components/settings/SettingsRow.vue';
+import SettingsSwitch from '@/components/settings/SettingsSwitch.vue';
 import { useAppearance } from '@/composables/useAppearance';
+import { usePush } from '@/composables/usePush';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import type { SharedData } from '@/types';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps<{
     alerts: { homeLocationName: string | null; nearbySummary: string; notifyEmail: boolean };
@@ -44,6 +47,28 @@ function toggleEmail() {
         },
     );
 }
+
+const push = usePush();
+const showInstallHelp = ref(false);
+onMounted(push.refresh);
+
+function togglePush() {
+    if (push.busy.value) {
+        return;
+    }
+    return push.subscribed.value ? push.disable() : push.enable();
+}
+
+const page = usePage<SharedData>();
+const testing = ref(false);
+
+function sendTestAlert() {
+    if (testing.value) {
+        return;
+    }
+    testing.value = true;
+    router.post('/settings/test-alert', {}, { preserveScroll: true, onFinish: () => (testing.value = false) });
+}
 </script>
 
 <template>
@@ -54,27 +79,43 @@ function toggleEmail() {
                 <SettingsRow label="Home location" :value="alerts.homeLocationName ?? 'Not set'" href="/settings/location" />
                 <SettingsRow label="Near me" :value="alerts.nearbySummary" href="/settings/near-me" />
                 <SettingsRow label="Email alerts" label-id="email-alerts-label">
-                    <button
-                        type="button"
-                        role="switch"
-                        :aria-checked="emailOn"
-                        aria-labelledby="email-alerts-label"
-                        :aria-disabled="pending"
-                        class="-my-2 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 aria-disabled:opacity-60"
-                        @click="toggleEmail"
-                    >
-                        <span
-                            class="relative inline-block h-7 w-12 rounded-full transition-colors"
-                            :class="emailOn ? 'bg-violet-600 dark:bg-violet-500' : 'bg-neutral-300 dark:bg-neutral-700'"
-                        >
-                            <span
-                                class="absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow transition-transform"
-                                :class="emailOn ? 'translate-x-5' : 'translate-x-0'"
-                            />
-                        </span>
-                    </button>
+                    <SettingsSwitch :checked="emailOn" labelledby="email-alerts-label" :disabled="pending" @toggle="toggleEmail" />
                 </SettingsRow>
                 <p v-if="emailError" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">Couldn't save — try again.</p>
+
+                <template v-if="push.needsInstall">
+                    <SettingsRow
+                        label="Push on this device"
+                        value="Add to Home Screen first"
+                        action
+                        :aria-expanded="showInstallHelp"
+                        aria-controls="push-install-help"
+                        @click="showInstallHelp = !showInstallHelp"
+                    />
+                    <p v-if="showInstallHelp" id="push-install-help" class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        Tap Share, then Add to Home Screen, then open GigRadar from the new icon and turn push on here.
+                    </p>
+                </template>
+                <SettingsRow v-else-if="!push.supported.value" label="Push on this device" value="Not supported on this browser" />
+                <template v-else>
+                    <SettingsRow label="Push on this device" label-id="push-alerts-label">
+                        <SettingsSwitch
+                            :checked="push.subscribed.value"
+                            labelledby="push-alerts-label"
+                            :disabled="push.busy.value"
+                            @toggle="togglePush"
+                        />
+                    </SettingsRow>
+                    <p v-if="push.error.value" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">{{ push.error.value }}</p>
+                </template>
+
+                <SettingsRow label="Send a test alert" action :aria-disabled="testing" @click="sendTestAlert" />
+                <p v-if="page.props.flash?.success" role="status" class="px-4 py-2 text-sm text-green-700 dark:text-green-400">
+                    {{ page.props.flash.success }}
+                </p>
+                <p v-if="page.props.flash?.error" role="alert" class="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+                    {{ page.props.flash.error }}
+                </p>
             </SettingsGroup>
 
             <SettingsGroup title="Account">

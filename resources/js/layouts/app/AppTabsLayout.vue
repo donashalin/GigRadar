@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BottomTabBar from '@/components/BottomTabBar.vue';
+import InstallBanner from '@/components/InstallBanner.vue';
 import type { BreadcrumbItemType } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { ChevronLeft } from 'lucide-vue-next';
@@ -39,6 +40,7 @@ const title = computed(() => props.breadcrumbs.at(-1)?.title ?? 'GigRadar');
             <slot />
         </main>
 
+        <InstallBanner />
         <BottomTabBar />
     </div>
 </template>

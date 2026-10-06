@@ -18,6 +18,7 @@ const rowClass =
     </Link>
     <button v-else-if="action" type="button" :class="[rowClass, 'aria-disabled:opacity-60', destructive && 'justify-center']">
         <span :class="['min-w-0 truncate', destructive ? 'text-red-600 dark:text-red-400' : 'flex-1']">{{ label }}</span>
+        <span v-if="value" class="max-w-[50%] truncate text-neutral-500 dark:text-neutral-400">{{ value }}</span>
     </button>
     <div v-else :class="[rowClass, destructive && 'justify-center']">
         <span :id="labelId" :class="['min-w-0 truncate', destructive ? 'text-red-600 dark:text-red-400' : 'flex-1']">{{ label }}</span>
