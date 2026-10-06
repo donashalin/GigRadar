@@ -34,6 +34,7 @@ class DiscoverFeed
             ->upcoming()
             ->whereIn('classification_id', array_column($vibe, 'id'))
             ->where('status', '!=', 'cancelled')
+            ->when($area->homeCountryCode !== null, fn ($q) => $q->where('country', $area->homeCountryCode))
             ->when($excluded !== [], fn ($q) => $q->whereNotIn('attraction_ticketmaster_id', $excluded))
             ->when($firstSeenSince, fn ($q) => $q->where('first_seen_at', '>=', $firstSeenSince))
             ->get()
@@ -48,6 +49,9 @@ class DiscoverFeed
 
             // Events are already soonest first, so the first hit per attraction is its soonest gig.
             foreach ($events->get($bucket['id'], []) as $event) {
+                if (count($items) >= self::GROUP_LIMIT) {
+                    break;
+                }
                 $attractionId = $event->attraction_ticketmaster_id;
                 if (isset($placed[$attractionId])) {
                     continue;
@@ -61,7 +65,7 @@ class DiscoverFeed
                     'id' => $bucket['id'],
                     'name' => $bucket['name'],
                     'artists' => $bucket['artists'],
-                    'items' => array_slice($items, 0, self::GROUP_LIMIT),
+                    'items' => $items,
                 ];
             }
         }
