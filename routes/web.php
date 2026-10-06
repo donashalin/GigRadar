@@ -3,6 +3,7 @@
 use App\Http\Controllers\ArtistController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\MyArtistsController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,6 +26,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereAlphaNumeric('ticketmasterId')->name('follows.update');
     Route::delete('artists/{ticketmasterId}/follow', [FollowController::class, 'destroy'])
         ->whereAlphaNumeric('ticketmasterId')->name('follows.destroy');
+
+    Route::post('push-subscriptions', [PushSubscriptionController::class, 'store'])
+        ->middleware('throttle:push-subscriptions')->name('push-subscriptions.store');
+    Route::delete('push-subscriptions', [PushSubscriptionController::class, 'destroy'])
+        ->middleware('throttle:push-subscriptions')->name('push-subscriptions.destroy');
 });
 
 require __DIR__.'/settings.php';
