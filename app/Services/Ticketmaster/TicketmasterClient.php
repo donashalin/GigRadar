@@ -60,6 +60,27 @@ class TicketmasterClient
         return array_values(array_filter($concerts));
     }
 
+    /** @return list<DiscoveryEventData> */
+    public function eventsByClassification(string $classificationId, string $countryCode): array
+    {
+        $json = $this->get('/events.json', [
+            'classificationId' => $classificationId,
+            'countryCode' => $countryCode,
+            'classificationName' => 'music',
+            'sort' => 'date,asc',
+            'size' => 200,
+        ]);
+
+        $events = [];
+        foreach ($json['_embedded']['events'] ?? [] as $event) {
+            if (is_array($event) && ($discovery = $this->toDiscoveryEvent($event)) !== null) {
+                $events[] = $discovery;
+            }
+        }
+
+        return $events;
+    }
+
     private function get(string $path, array $query = []): array
     {
         $this->throttle();
@@ -121,11 +142,37 @@ class TicketmasterClient
         return new ArtistData(
             $attraction['id'],
             $attraction['name'],
-            $this->safeUrl($image['url'] ?? null),
+            $this->bestImageUrl($attraction['images'] ?? []),
             $this->stringOrNull($classification['genre']['id'] ?? null),
             $this->stringOrNull($classification['genre']['name'] ?? null),
             $this->stringOrNull($classification['subGenre']['id'] ?? null),
             $this->stringOrNull($classification['subGenre']['name'] ?? null),
+        );
+    }
+
+    private function bestImageUrl(mixed $images): ?string
+    {
+        $images = collect(is_array($images) ? array_filter($images, 'is_array') : []);
+        $image = $images->where('ratio', '16_9')->sortByDesc('width')->first() ?? $images->first();
+
+        return $this->safeUrl($image['url'] ?? null);
+    }
+
+    private function toDiscoveryEvent(array $event): ?DiscoveryEventData
+    {
+        $attraction = $event['_embedded']['attractions'][0] ?? null;
+        if (! is_array($attraction) || ! isset($attraction['id'], $attraction['name'])
+            || ! is_string($attraction['id']) || ! is_string($attraction['name'])) {
+            return null;
+        }
+
+        $concert = $this->toConcert($event);
+
+        return $concert === null ? null : new DiscoveryEventData(
+            $concert,
+            $attraction['id'],
+            $attraction['name'],
+            $this->bestImageUrl($attraction['images'] ?? []),
         );
     }
 

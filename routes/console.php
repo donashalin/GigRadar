@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('gigradar:check-dates')->everySixHours()->withoutOverlapping()->onOneServer()->timezone('Europe/London');
+Schedule::command('gigradar:discover')->dailyAt('04:00')->timezone('Europe/London')->withoutOverlapping()->onOneServer();

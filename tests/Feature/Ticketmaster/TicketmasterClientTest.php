@@ -224,3 +224,53 @@ it('maps classifications in search results', function () {
 
     expect($results[0]->subGenreName)->toBe('Alternative Rock')->and($results[1]->subGenreId)->toBeNull();
 });
+
+it('fetches discovery events by classification and country', function () {
+    Http::fake(['app.ticketmaster.com/discovery/v2/events.json*' => Http::response(tmFixture('discovery-events'))]);
+
+    $events = app(TicketmasterClient::class)->eventsByClassification('KZazBEonSMnZfZ7vAde', 'GB');
+
+    expect($events)->toHaveCount(2)
+        ->and($events[0])->toBeInstanceOf(App\Services\Ticketmaster\DiscoveryEventData::class)
+        ->and($events[0]->attractionId)->toBe('K8vZShame01')
+        ->and($events[0]->attractionName)->toBe('Shame')
+        ->and($events[0]->attractionImageUrl)->toBe('https://s1.ticketm.net/dam/a/shame-large.jpg')
+        ->and($events[0]->concert->id)->toBe('D5vYZ9disc001')
+        ->and($events[0]->concert->city)->toBe('Leeds')
+        ->and($events[1]->concert->status)->toBe('cancelled')
+        ->and($events[1]->attractionImageUrl)->toBeNull();
+
+    Http::assertSent(fn (Request $r) => tmQuery($r)['classificationId'] === 'KZazBEonSMnZfZ7vAde'
+        && tmQuery($r)['countryCode'] === 'GB'
+        && tmQuery($r)['classificationName'] === 'music'
+        && tmQuery($r)['sort'] === 'date,asc'
+        && tmQuery($r)['size'] === '200');
+});
+
+it('drops unsafe attraction image URLs and malformed attractions in discovery events', function () {
+    $event = fn (string $id, array $attractions) => [
+        'id' => $id, 'name' => $id, 'dates' => ['start' => ['localDate' => '2027-01-01']],
+        '_embedded' => ['attractions' => $attractions],
+    ];
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [
+        $event('E1', [['id' => 'A1', 'name' => 'Bad Image', 'images' => [['ratio' => '16_9', 'url' => 'javascript:alert(1)', 'width' => 9]]]]),
+        $event('E2', ['not-an-array']),
+        $event('E3', [['name' => 'No id']]),
+        'junk',
+    ]]])]);
+
+    $events = app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+
+    expect($events)->toHaveCount(1)->and($events[0]->attractionImageUrl)->toBeNull();
+});
+
+it('redacts the API key when a discovery request cannot connect', function () {
+    Http::fake(fn () => throw new ConnectionException('cURL error for https://x/events.json?apikey=test-key'));
+
+    try {
+        app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+        $this->fail('Expected TicketmasterException');
+    } catch (TicketmasterException $e) {
+        expect($e->getMessage())->not->toContain('test-key')->and($e->getPrevious())->toBeNull();
+    }
+});
