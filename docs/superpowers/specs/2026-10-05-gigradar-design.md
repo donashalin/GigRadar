@@ -16,7 +16,7 @@ GigRadar alerts fans when their favourite artists announce new concert dates or 
 | App type | Mobile-first PWA, installable to the iPhone/Android Home Screen |
 | Backend | Latest Laravel, MySQL, queues (database driver), scheduler |
 | Frontend | Official Laravel Vue starter kit (Inertia + Vue 3 + TypeScript + Tailwind) |
-| PWA | `vite-plugin-pwa` (manifest, icons, service worker) |
+| PWA | Hand-written `public/manifest.webmanifest`, icons and `public/sw.js` (push, notification click, offline page; pages and data are never cached) |
 | Concert data | Ticketmaster Discovery API (free key, 5,000 calls/day, 5 req/sec) |
 | Auth | Email + password (starter kit auth): registration, email verification, password reset |
 | Alert channels | Email (Resend) and Web Push (`laravel-notification-channels/webpush`, VAPID). No SMS in v1. |
@@ -56,7 +56,7 @@ Mobile-first layout with a fixed bottom tab bar: **My Artists**, **Search**, **S
 3. **Artist Detail** — upcoming events (date, venue, city, country, status badge if cancelled/postponed; "Get tickets" opens `ticket_url` in a new tab). Follow/Unfollow button. Alert scope toggle (`Everywhere` / `Near me`), shown only when following. Viewing updates the follow's `last_seen_at`.
 4. **My Artists** (home, `/dashboard`) — followed artists sorted by name, with a "New" badge where any upcoming, non-cancelled concert has `from_seed = false` and `first_seen_at > follows.last_seen_at`. Section "Upcoming near you": next 10 events across followed artists within the user's area (home country, or radius in miles); without a home location it shows a prompt linking to alert settings.
 5. **Settings** — iPhone-style grouped list at `/settings`; each row opens a full-screen sub-page with a "‹ Settings" back link in the header. Every choice saves immediately (no Save buttons).
-   - **Alerts** group: *Home location ›* (shows the town or "Not set") → type a town (Nominatim lookup) or "Use my current location"; picking a place saves and returns to Settings; "Remove home location" at the bottom. *Near me ›* (shows "Anywhere in <country>" or "Within N miles") → checkmark list: Anywhere in <country> (default; country from the home location) / 25 / 50 / 100 / 250 miles; tapping saves. *Email alerts* — inline switch, saves on toggle. (Plan 3 adds *Push on this device* here.)
+   - **Alerts** group: *Home location ›* (shows the town or "Not set") → type a town (Nominatim lookup) or "Use my current location"; picking a place saves and returns to Settings; "Remove home location" at the bottom. *Near me ›* (shows "Anywhere in <country>" or "Within N miles") → checkmark list: Anywhere in <country> (default; country from the home location) / 25 / 50 / 100 / 250 miles; tapping saves. *Email alerts* — inline switch, saves on toggle. *Push on this device* — per-device switch (subscribes/unsubscribes this browser; on iOS only shown when running from the Home Screen, otherwise explains how to add it). *Send a test alert* — sends a sample alert to the current user only.
    - **Account** group: *Profile ›* (name, email, Delete account at the bottom), *Password ›*, *Appearance ›* (shows Light/Dark/System).
    - **Log out** row (red).
 
