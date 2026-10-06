@@ -19,8 +19,8 @@ class Geocoder
     {
         $query = trim($query);
 
-        return Cache::remember('geo:search:'.md5(mb_strtolower($query)), now()->addDays(30), function () use ($query) {
-            $results = $this->get('/search', ['q' => $query, 'format' => 'jsonv2', 'limit' => 5, 'accept-language' => 'en']);
+        return Cache::remember('geo:v2:search:'.md5(mb_strtolower($query)), now()->addDays(30), function () use ($query) {
+            $results = $this->get('/search', ['q' => $query, 'format' => 'jsonv2', 'limit' => 5, 'addressdetails' => 1, 'accept-language' => 'en']);
 
             return array_values(array_filter(array_map($this->toPlace(...), array_filter($results, 'is_array'))));
         });
@@ -30,11 +30,11 @@ class Geocoder
     {
         $lat = round($lat, 3);
         $lng = round($lng, 3);
-        $key = sprintf('geo:reverse:%.3f,%.3f', $lat, $lng);
+        $key = sprintf('geo:v2:reverse:%.3f,%.3f', $lat, $lng);
 
         // false is a sentinel for "no place here" (Cache::remember treats null as a miss).
         $place = Cache::remember($key, now()->addDays(30), fn () => $this->toPlace(
-            $this->get('/reverse', ['lat' => $lat, 'lon' => $lng, 'format' => 'jsonv2', 'zoom' => 10, 'accept-language' => 'en']),
+            $this->get('/reverse', ['lat' => $lat, 'lon' => $lng, 'format' => 'jsonv2', 'zoom' => 10, 'addressdetails' => 1, 'accept-language' => 'en']),
         ) ?? false);
 
         return $place ?: null;
@@ -89,7 +89,17 @@ class Geocoder
             name: $name,
             lat: round((float) $result['lat'], 4),
             lng: round((float) $result['lon'], 4),
+            countryCode: $this->countryCode($result),
         );
+    }
+
+    /** Nominatim's lower-case ISO alpha-2 code, upper-cased to match Ticketmaster's countryCode. */
+    private function countryCode(array $result): ?string
+    {
+        $address = $result['address'] ?? null;
+        $code = is_array($address) ? ($address['country_code'] ?? null) : null;
+
+        return is_string($code) && preg_match('/^[A-Za-z]{2}$/', $code) === 1 ? strtoupper($code) : null;
     }
 
     /** "Leicester, Leicestershire, East Midlands, England, United Kingdom" → "Leicester, Leicestershire, United Kingdom" */

@@ -1,1 +1,1 @@
-{ "place_id": 1, "lat": "52.63621234", "lon": "-1.13314567", "name": "Leicester", "display_name": "Leicester, Leicestershire, East Midlands, England, United Kingdom" }
+{ "place_id": 1, "lat": "52.63621234", "lon": "-1.13314567", "name": "Leicester", "display_name": "Leicester, Leicestershire, East Midlands, England, United Kingdom", "address": { "country_code": "gb" } }

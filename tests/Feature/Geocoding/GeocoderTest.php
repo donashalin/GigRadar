@@ -138,3 +138,45 @@ it('caches points that cannot be reverse-geocoded', function () {
         ->and(app(Geocoder::class)->reverse(0.0, 0.0))->toBeNull();
     Http::assertSentCount(1);
 });
+
+it('returns upper-cased country codes from search and reverse', function () {
+    Http::fake([
+        'nominatim.openstreetmap.org/search*' => Http::response(nominatimFixture('search')),
+        'nominatim.openstreetmap.org/reverse*' => Http::response(nominatimFixture('reverse')),
+    ]);
+
+    $places = app(Geocoder::class)->search('Leicester');
+
+    expect($places[0]->countryCode)->toBe('GB')
+        ->and($places[1]->countryCode)->toBe('US')
+        ->and(app(Geocoder::class)->reverse(52.6362, -1.1331)->countryCode)->toBe('GB')
+        ->and($places[0]->toArray())->toBe(['name' => 'Leicester, Leicestershire, United Kingdom', 'lat' => 52.6362, 'lng' => -1.1331, 'countryCode' => 'GB']);
+});
+
+it('gives a null country code when the result has no usable one', function (array $extra) {
+    Http::fake(['nominatim.openstreetmap.org/search*' => Http::response([
+        ['lat' => '52.6', 'lon' => '-1.1', 'display_name' => 'Leicester, UK', ...$extra],
+    ])]);
+
+    expect(app(Geocoder::class)->search('Leicester')[0]->countryCode)->toBeNull();
+})->with([
+    'no address' => [[]],
+    'no country_code' => [['address' => ['city' => 'x']]],
+    'too long' => [['address' => ['country_code' => 'gbr']]],
+    'non-alphabetic' => [['address' => ['country_code' => 'g1']]],
+    'not a string' => [['address' => ['country_code' => ['gb']]]],
+    'address not an array' => [['address' => 'gb']],
+]);
+
+it('requests address details', function () {
+    Http::fake([
+        'nominatim.openstreetmap.org/search*' => Http::response(nominatimFixture('search')),
+        'nominatim.openstreetmap.org/reverse*' => Http::response(nominatimFixture('reverse')),
+    ]);
+
+    app(Geocoder::class)->search('Leicester');
+    app(Geocoder::class)->reverse(52.6362, -1.1331);
+
+    Http::assertSent(fn (Request $r) => str_contains($r->url(), '/search') && str_contains($r->url(), 'addressdetails=1'));
+    Http::assertSent(fn (Request $r) => str_contains($r->url(), '/reverse') && str_contains($r->url(), 'addressdetails=1'));
+});

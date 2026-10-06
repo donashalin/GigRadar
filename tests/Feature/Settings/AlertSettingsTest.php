@@ -77,7 +77,9 @@ it('searches places as JSON', function () {
     $this->actingAs(User::factory()->create())->getJson('/settings/alerts/places?q=Leicester')
         ->assertOk()
         ->assertJsonCount(2)
-        ->assertJsonPath('0.name', 'Leicester, Leicestershire, United Kingdom');
+        ->assertJsonPath('0.name', 'Leicester, Leicestershire, United Kingdom')
+        ->assertJsonPath('0.countryCode', 'GB')
+        ->assertJsonPath('1.countryCode', 'US');
 });
 
 it('does not search places for fewer than 3 characters', function () {
@@ -98,7 +100,7 @@ it('reverse-geocodes the current location', function () {
     Http::fake(['nominatim.openstreetmap.org/reverse*' => Http::response(nominatimFixture('reverse'))]);
 
     $this->actingAs(User::factory()->create())->getJson('/settings/alerts/reverse?lat=52.6362&lng=-1.1331')
-        ->assertOk()->assertJsonPath('name', 'Leicester, Leicestershire, United Kingdom');
+        ->assertOk()->assertJsonPath('name', 'Leicester, Leicestershire, United Kingdom')->assertJsonPath('countryCode', 'GB');
 });
 
 it('404s when the current location cannot be named', function () {

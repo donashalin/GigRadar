@@ -1,4 +1,4 @@
 [
-  { "place_id": 1, "lat": "52.6362", "lon": "-1.1331", "name": "Leicester", "display_name": "Leicester, Leicestershire, East Midlands, England, United Kingdom" },
-  { "place_id": 2, "lat": "42.2459", "lon": "-71.9087", "name": "Leicester", "display_name": "Leicester, Worcester County, Massachusetts, United States" }
+  { "place_id": 1, "lat": "52.6362", "lon": "-1.1331", "name": "Leicester", "display_name": "Leicester, Leicestershire, East Midlands, England, United Kingdom", "address": { "country_code": "gb" } },
+  { "place_id": 2, "lat": "42.2459", "lon": "-71.9087", "name": "Leicester", "display_name": "Leicester, Worcester County, Massachusetts, United States", "address": { "country_code": "us" } }
 ]

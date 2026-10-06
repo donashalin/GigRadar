@@ -8,11 +8,12 @@ final readonly class Place
         public string $name,
         public float $lat,
         public float $lng,
+        public ?string $countryCode = null,
     ) {}
 
-    /** @return array{name: string, lat: float, lng: float} */
+    /** @return array{name: string, lat: float, lng: float, countryCode: ?string} */
     public function toArray(): array
     {
-        return ['name' => $this->name, 'lat' => $this->lat, 'lng' => $this->lng];
+        return ['name' => $this->name, 'lat' => $this->lat, 'lng' => $this->lng, 'countryCode' => $this->countryCode];
     }
 }
