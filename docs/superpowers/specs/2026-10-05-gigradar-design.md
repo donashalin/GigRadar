@@ -198,7 +198,7 @@ Alerts are driven by `concerts.alerted_at`, not by which sync first saw a concer
 
 **Data**
 ```
-artists                    + genre_id, genre_name, sub_genre_id, sub_genre_name (nullable strings)
+artists                    + genre_id, genre_name, sub_genre_id, sub_genre_name (nullable strings), classifications_checked_at null
 discovery_events           id, ticketmaster_event_id, classification_id (sub-genre or genre id it was found under),
                            attraction_ticketmaster_id, attraction_name, attraction_image_url null,
                            name, starts_at, local_date null, venue_name, city, country, lat null, lng null,
@@ -209,7 +209,7 @@ dismissed_artists          id, user_id FK cascade, attraction_ticketmaster_id, a
 users                      + notify_similar boolean default false
 ```
 
-**`gigradar:discover`** (daily, 04:00 Europe/London): for each distinct (classification id, home country code) across users' vibes, fetch Ticketmaster music events for that classification and country (`classificationId`, `countryCode`, `sort=date,asc`, `size=200`), upsert into `discovery_events` (set `first_seen_at` on insert only), delete past rows. One failure never stops the run.
+**`gigradar:discover`** (daily, 04:00 Europe/London): for each distinct (classification id, home country code) across users' vibes, fetch Ticketmaster events for that classification and country (`classificationId`, `countryCode`, Music `segmentId`, `sort=date,asc`, `size=200`, up to 3 pages), upsert into `discovery_events` (set `first_seen_at` on insert only), delete past rows. One failure never stops the run.
 
 **Discover tab** (`/discover`, 4th tab): discovery events in the user's "near me" area (`NearbyArea`), excluding followed and dismissed artists and cancelled events; grouped by classification in vibe-weight order, headed "Because you follow A, B"; up to 10 per group, soonest first; one row per artist per group (their soonest gig). Each row: artist, date, city, Follow, **Not interested** (hides the artist from Discover and the roundup permanently; brief Undo). Empty states for no follows / no home location / nothing found.
 
