@@ -191,3 +191,28 @@ Alerts are driven by `concerts.alerted_at`, not by which sync first saw a concer
 - Resend account + a domain you own (for sending address and the app's HTTPS URL).
 - VAPID keys: `php artisan webpush:vapid`.
 - For on-phone push testing before deploy: `ngrok` or `expose`.
+
+## 13. Similar vibe — Discover tab and weekly roundup
+
+**Similarity source:** Ticketmaster classifications. Each artist stores its genre and sub-genre (`classifications[0].genre` / `.subGenre`, id + name). A user's **vibe** = the sub-genres of their followed artists, weighted by follow count; catch-all classifications ("Undefined", "Other") are ignored, falling back to the genre when the sub-genre is unusable.
+
+**Data**
+```
+artists                    + genre_id, genre_name, sub_genre_id, sub_genre_name (nullable strings)
+discovery_events           id, ticketmaster_event_id, classification_id (sub-genre or genre id it was found under),
+                           attraction_ticketmaster_id, attraction_name, attraction_image_url null,
+                           name, starts_at, local_date null, venue_name, city, country, lat null, lng null,
+                           ticket_url, status, first_seen_at, timestamps
+                           unique(classification_id, ticketmaster_event_id), index(classification_id, country, local_date)
+dismissed_artists          id, user_id FK cascade, attraction_ticketmaster_id, attraction_name, timestamps
+                           unique(user_id, attraction_ticketmaster_id)
+users                      + notify_similar boolean default false
+```
+
+**`gigradar:discover`** (daily, 04:00 Europe/London): for each distinct (classification id, home country code) across users' vibes, fetch Ticketmaster music events for that classification and country (`classificationId`, `countryCode`, `sort=date,asc`, `size=200`), upsert into `discovery_events` (set `first_seen_at` on insert only), delete past rows. One failure never stops the run.
+
+**Discover tab** (`/discover`, 4th tab): discovery events in the user's "near me" area (`NearbyArea`), excluding followed and dismissed artists and cancelled events; grouped by classification in vibe-weight order, headed "Because you follow A, B"; up to 10 per group, soonest first; one row per artist per group (their soonest gig). Each row: artist, date, city, Follow, **Not interested** (hides the artist from Discover and the roundup permanently; brief Undo). Empty states for no follows / no home location / nothing found.
+
+**Hidden artists** (Settings → Alerts → Hidden artists ›): list with "Show again". Following a hidden artist un-hides them.
+
+**Weekly roundup** (`gigradar:similar-roundup`, Fridays 18:00 Europe/London): for each user with `notify_similar`, discovery events first seen in the last 7 days that would appear on their Discover tab; if any, one `SimilarGigsRoundup` notification (same channels as alerts) — "7 new gigs that match your taste — Shame in Leeds and 6 more", opening `/discover`. Settings → Alerts gets a **Similar artists** switch (off by default).
