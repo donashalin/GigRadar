@@ -157,3 +157,15 @@ it('shares the flash error with Inertia pages', function () {
     $this->actingAs(User::factory()->create())->withSession(['error' => 'Boom'])->get('/search')
         ->assertInertia(fn ($page) => $page->where('flash.error', 'Boom'));
 });
+
+it('un-hides a dismissed artist when followed', function () {
+    Http::fake();
+    $user = User::factory()->create();
+    $artist = Artist::factory()->create();
+    $user->dismissedArtists()->create(['attraction_ticketmaster_id' => $artist->ticketmaster_id, 'attraction_name' => $artist->name]);
+    $user->dismissedArtists()->create(['attraction_ticketmaster_id' => 'K8other', 'attraction_name' => 'Other']);
+
+    $this->actingAs($user)->post("/artists/{$artist->ticketmaster_id}/follow")->assertRedirect();
+
+    expect($user->dismissedArtists()->pluck('attraction_ticketmaster_id')->all())->toBe(['K8other']);
+});

@@ -27,6 +27,9 @@ class FollowController extends Controller
             // Double-submit: already following, keep the existing row untouched.
         }
 
+        // Following a hidden artist un-hides them.
+        $request->user()->dismissedArtists()->where('attraction_ticketmaster_id', $artist->ticketmaster_id)->delete();
+
         // Store current dates now so they never trigger "new date" alerts later.
         if (! $artist->seeded) {
             try {
