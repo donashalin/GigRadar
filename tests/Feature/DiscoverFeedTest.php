@@ -193,3 +193,13 @@ it('honours a custom group limit', function () {
     expect(dfFeed($user)[0]['items'])->toHaveCount(10)
         ->and(app(DiscoverFeed::class)->for($user, null, 200)[0]['items'])->toHaveCount(12);
 });
+
+it('excludes rows with an exclude_reason', function () {
+    $user = dfUser();
+    dfFollow($user);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Real Band']);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Tribute Act', 'exclude_reason' => 'tribute_subtype']);
+    DiscoveryEvent::factory()->create(['attraction_name' => 'Fan Night', 'exclude_reason' => 'not_an_artist']);
+
+    expect(array_column(dfFeed($user)[0]['items'], 'attractionName'))->toBe(['Real Band']);
+});

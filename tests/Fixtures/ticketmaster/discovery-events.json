@@ -6,24 +6,60 @@
         "name": "Shame - Food for Worms Tour",
         "url": "https://www.ticketmaster.co.uk/event/d001",
         "dates": {
-          "start": { "localDate": "2027-03-14", "dateTime": "2027-03-14T19:30:00Z" },
-          "status": { "code": "onsale" }
+          "start": {
+            "localDate": "2027-03-14",
+            "dateTime": "2027-03-14T19:30:00Z"
+          },
+          "status": {
+            "code": "onsale"
+          }
         },
         "_embedded": {
-          "venues": [{
-            "name": "Brudenell Social Club",
-            "city": { "name": "Leeds" },
-            "country": { "countryCode": "GB" },
-            "location": { "latitude": "53.8137", "longitude": "-1.5783" }
-          }],
-          "attractions": [{
-            "id": "K8vZShame01",
-            "name": "Shame",
-            "images": [
-              { "ratio": "3_2", "url": "https://s1.ticketm.net/dam/a/shame-small.jpg", "width": 305 },
-              { "ratio": "16_9", "url": "https://s1.ticketm.net/dam/a/shame-large.jpg", "width": 1024 }
-            ]
-          }]
+          "venues": [
+            {
+              "name": "Brudenell Social Club",
+              "city": {
+                "name": "Leeds"
+              },
+              "country": {
+                "countryCode": "GB"
+              },
+              "location": {
+                "latitude": "53.8137",
+                "longitude": "-1.5783"
+              }
+            }
+          ],
+          "attractions": [
+            {
+              "id": "K8vZShame01",
+              "name": "Shame",
+              "images": [
+                {
+                  "ratio": "3_2",
+                  "url": "https://s1.ticketm.net/dam/a/shame-small.jpg",
+                  "width": 305
+                },
+                {
+                  "ratio": "16_9",
+                  "url": "https://s1.ticketm.net/dam/a/shame-large.jpg",
+                  "width": 1024
+                }
+              ],
+              "classifications": [
+                {
+                  "type": {
+                    "id": "t",
+                    "name": "Group"
+                  },
+                  "subType": {
+                    "id": "s",
+                    "name": "Band"
+                  }
+                }
+              ]
+            }
+          ]
         }
       },
       {
@@ -31,22 +67,171 @@
         "name": "Idles",
         "url": "https://www.ticketmaster.co.uk/event/d002",
         "dates": {
-          "start": { "localDate": "2027-04-02" },
-          "status": { "code": "canceled" }
+          "start": {
+            "localDate": "2027-04-02"
+          },
+          "status": {
+            "code": "canceled"
+          }
         },
         "_embedded": {
-          "venues": [{ "name": "Olympia", "city": { "name": "Dublin" }, "country": { "countryCode": "IE" } }],
-          "attractions": [{ "id": "K8vZIdles001", "name": "Idles" }]
+          "venues": [
+            {
+              "name": "Olympia",
+              "city": {
+                "name": "Dublin"
+              },
+              "country": {
+                "countryCode": "IE"
+              }
+            }
+          ],
+          "attractions": [
+            {
+              "id": "K8vZIdles001",
+              "name": "Idles",
+              "classifications": [
+                {
+                  "type": {
+                    "name": "Group"
+                  }
+                }
+              ]
+            }
+          ]
         }
       },
       {
         "id": "D5vYZ9disc003",
         "name": "Mystery Night",
         "url": "https://www.ticketmaster.co.uk/event/d003",
-        "dates": { "start": { "localDate": "2027-05-01", "dateTime": "2027-05-01T19:00:00Z" }, "status": { "code": "onsale" } },
-        "_embedded": { "venues": [{ "name": "The Cavern", "city": { "name": "Liverpool" }, "country": { "countryCode": "GB" } }] }
+        "dates": {
+          "start": {
+            "localDate": "2027-05-01",
+            "dateTime": "2027-05-01T19:00:00Z"
+          },
+          "status": {
+            "code": "onsale"
+          }
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "The Cavern",
+              "city": {
+                "name": "Liverpool"
+              },
+              "country": {
+                "countryCode": "GB"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "D5vYZ9disc004",
+        "name": "Rob Lamberti Live",
+        "url": "https://www.ticketmaster.co.uk/event/d004",
+        "dates": {
+          "start": {
+            "localDate": "2027-06-04",
+            "dateTime": "2027-06-04T19:30:00Z"
+          },
+          "status": {
+            "code": "onsale"
+          }
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Brudenell Social Club",
+              "city": {
+                "name": "Leeds"
+              },
+              "country": {
+                "countryCode": "GB"
+              },
+              "location": {
+                "latitude": "53.8137",
+                "longitude": "-1.5783"
+              }
+            }
+          ],
+          "attractions": [
+            {
+              "id": "K8vZTribute01",
+              "name": "Rob Lamberti",
+              "classifications": [
+                {
+                  "type": {
+                    "id": "t",
+                    "name": "Group"
+                  },
+                  "subType": {
+                    "id": "s",
+                    "name": "Tribute Band"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "D5vYZ9disc005",
+        "name": "Simply Billy Joel",
+        "url": "https://www.ticketmaster.co.uk/event/d005",
+        "dates": {
+          "start": {
+            "localDate": "2027-06-05",
+            "dateTime": "2027-06-05T19:30:00Z"
+          },
+          "status": {
+            "code": "onsale"
+          }
+        },
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Brudenell Social Club",
+              "city": {
+                "name": "Leeds"
+              },
+              "country": {
+                "countryCode": "GB"
+              },
+              "location": {
+                "latitude": "53.8137",
+                "longitude": "-1.5783"
+              }
+            }
+          ],
+          "attractions": [
+            {
+              "id": "K8vZStyle0001",
+              "name": "Simply Billy Joel",
+              "classifications": [
+                {
+                  "type": {
+                    "id": "t",
+                    "name": "Event Style"
+                  },
+                  "subType": {
+                    "id": "s",
+                    "name": "Fan Experiences"
+                  }
+                }
+              ]
+            }
+          ]
+        }
       }
     ]
   },
-  "page": { "size": 200, "totalElements": 3, "totalPages": 1, "number": 0 }
+  "page": {
+    "size": 200,
+    "totalElements": 5,
+    "totalPages": 1,
+    "number": 0
+  }
 }

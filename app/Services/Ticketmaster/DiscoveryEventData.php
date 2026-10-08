@@ -9,5 +9,7 @@ final readonly class DiscoveryEventData
         public string $attractionId,
         public string $attractionName,
         public ?string $attractionImageUrl,
+        public ?string $attractionType = null,
+        public ?string $attractionSubType = null,
     ) {}
 }

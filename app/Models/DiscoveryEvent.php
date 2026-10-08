@@ -14,6 +14,7 @@ class DiscoveryEvent extends Model
         'ticketmaster_event_id', 'classification_id', 'attraction_ticketmaster_id', 'attraction_name',
         'attraction_image_url', 'name', 'starts_at', 'local_date', 'venue_name', 'city', 'country',
         'lat', 'lng', 'ticket_url', 'status', 'first_seen_at', 'from_seed',
+        'exclude_reason',
     ];
 
     protected function casts(): array

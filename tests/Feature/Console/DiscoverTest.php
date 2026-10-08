@@ -35,7 +35,7 @@ it('fetches each distinct classification and country pair once', function () {
     vibeUser(['S1'], 'IE');
 
     $this->artisan('gigradar:discover')
-        ->expectsOutput('Fetched 3 classifications, stored 4 new gigs, 0 failures.')
+        ->expectsOutput('Fetched 3 classifications, stored 8 new gigs, 0 failures.')
         ->assertSuccessful();
 
     $pairs = collect(Http::recorded())->map(fn ($p) => tmQuery($p[0])['classificationId'].'|'.tmQuery($p[0])['countryCode'])->sort()->values()->all();
@@ -57,7 +57,7 @@ it('inserts with first_seen_at and keeps it on later runs while refreshing other
 
     $this->artisan('gigradar:discover');
     $row = DiscoveryEvent::where('ticketmaster_event_id', 'D5vYZ9disc001')->firstOrFail();
-    expect(DiscoveryEvent::count())->toBe(2)
+    expect(DiscoveryEvent::count())->toBe(4)
         ->and($row->classification_id)->toBe('S1')
         ->and($row->attraction_name)->toBe('Shame')
         ->and($row->first_seen_at)->not->toBeNull();
@@ -69,7 +69,7 @@ it('inserts with first_seen_at and keeps it on later runs while refreshing other
     $this->artisan('gigradar:discover')->expectsOutput('Fetched 1 classifications, stored 0 new gigs, 0 failures.');
 
     $again = $row->fresh();
-    expect(DiscoveryEvent::count())->toBe(2)
+    expect(DiscoveryEvent::count())->toBe(4)
         ->and($again->first_seen_at->equalTo($firstSeen))->toBeTrue()
         ->and($again->venue_name)->toBe('Brudenell Social Club');
 });
@@ -91,7 +91,7 @@ it('keeps going when one pair fails', function () {
     vibeUser(['S1', 'S2']);
 
     $this->artisan('gigradar:discover')
-        ->expectsOutput('Fetched 1 classifications, stored 2 new gigs, 1 failures.')
+        ->expectsOutput('Fetched 1 classifications, stored 4 new gigs, 1 failures.')
         ->assertSuccessful();
 
     expect(DiscoveryEvent::pluck('classification_id')->unique()->all())->toBe(['S2']);
@@ -118,11 +118,11 @@ it('skips one bad event, keeps the rest of the pair and other pairs, and counts 
     });
 
     $this->artisan('gigradar:discover')
-        ->expectsOutput('Fetched 2 classifications, stored 3 new gigs, 1 failures.')
+        ->expectsOutput('Fetched 2 classifications, stored 7 new gigs, 1 failures.')
         ->assertSuccessful();
 
-    expect(DiscoveryEvent::where('classification_id', 'S1')->count())->toBe(1)
-        ->and(DiscoveryEvent::where('classification_id', 'S2')->count())->toBe(2);
+    expect(DiscoveryEvent::where('classification_id', 'S1')->count())->toBe(3)
+        ->and(DiscoveryEvent::where('classification_id', 'S2')->count())->toBe(4);
 });
 
 it('still prints the summary when pruning fails', function () {
@@ -135,7 +135,7 @@ it('still prints the summary when pruning fails', function () {
     });
 
     $this->artisan('gigradar:discover')
-        ->expectsOutput('Fetched 1 classifications, stored 2 new gigs, 1 failures.')
+        ->expectsOutput('Fetched 1 classifications, stored 4 new gigs, 1 failures.')
         ->assertSuccessful();
 });
 
@@ -144,7 +144,7 @@ it('marks rows from the first-ever fetch of a pair as seed, and later new rows a
     vibeUser(['S1']);
 
     $this->artisan('gigradar:discover');
-    expect(DiscoveryEvent::where('from_seed', true)->count())->toBe(2);
+    expect(DiscoveryEvent::where('from_seed', true)->count())->toBe(4);
 
     // The pair now has rows (GB), so a gig appearing later is genuinely new.
     DiscoveryEvent::where('ticketmaster_event_id', 'D5vYZ9disc001')->delete();
@@ -162,4 +162,30 @@ it('treats a pair as seeded per classification and country', function () {
     $this->artisan('gigradar:discover');
 
     expect(DiscoveryEvent::where('classification_id', 'S1')->where('country', 'GB')->where('from_seed', true)->count())->toBeGreaterThan(0);
+});
+
+it('stores an exclude_reason for tribute acts and event styles, and null for real artists', function () {
+    fakeDiscovery();
+    vibeUser(['S1']);
+
+    $this->artisan('gigradar:discover');
+
+    expect(DiscoveryEvent::pluck('exclude_reason', 'ticketmaster_event_id')->all())->toBe([
+        'D5vYZ9disc001' => null,
+        'D5vYZ9disc002' => null,
+        'D5vYZ9disc004' => 'tribute_subtype',
+        'D5vYZ9disc005' => 'not_an_artist',
+    ]);
+});
+
+it('backfills exclude_reason on existing rows when they are updated', function () {
+    fakeDiscovery();
+    vibeUser(['S1']);
+    $row = DiscoveryEvent::factory()->create([
+        'classification_id' => 'S1', 'ticketmaster_event_id' => 'D5vYZ9disc004', 'exclude_reason' => null,
+    ]);
+
+    $this->artisan('gigradar:discover');
+
+    expect($row->fresh()->exclude_reason)->toBe('tribute_subtype');
 });

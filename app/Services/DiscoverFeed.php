@@ -32,6 +32,7 @@ class DiscoverFeed
 
         $events = DiscoveryEvent::query()
             ->upcoming()
+            ->whereNull('exclude_reason')
             ->whereIn('classification_id', array_column($vibe, 'id'))
             ->where('status', '!=', 'cancelled')
             ->when($area->homeCountryCode !== null, fn ($q) => $q->where('country', $area->homeCountryCode))

@@ -178,12 +178,15 @@ class TicketmasterClient
         }
 
         $concert = $this->toConcert($event);
+        $classification = is_array($attraction['classifications'][0] ?? null) ? $attraction['classifications'][0] : [];
 
         return $concert === null ? null : new DiscoveryEventData(
             $concert,
             $attraction['id'],
             $attraction['name'],
             $this->bestImageUrl($attraction['images'] ?? []),
+            $this->stringOrNull($classification['type']['name'] ?? null),
+            $this->stringOrNull($classification['subType']['name'] ?? null),
         );
     }
 

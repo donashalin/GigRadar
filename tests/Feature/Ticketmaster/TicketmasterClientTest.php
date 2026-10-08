@@ -231,7 +231,7 @@ it('fetches discovery events by classification and country', function () {
 
     $events = app(TicketmasterClient::class)->eventsByClassification('KZazBEonSMnZfZ7vAde', 'GB');
 
-    expect($events)->toHaveCount(2)
+    expect($events)->toHaveCount(4)
         ->and($events[0])->toBeInstanceOf(DiscoveryEventData::class)
         ->and($events[0]->attractionId)->toBe('K8vZShame01')
         ->and($events[0]->attractionName)->toBe('Shame')
@@ -239,7 +239,11 @@ it('fetches discovery events by classification and country', function () {
         ->and($events[0]->concert->id)->toBe('D5vYZ9disc001')
         ->and($events[0]->concert->city)->toBe('Leeds')
         ->and($events[1]->concert->status)->toBe('cancelled')
-        ->and($events[1]->attractionImageUrl)->toBeNull();
+        ->and($events[1]->attractionImageUrl)->toBeNull()
+        ->and([$events[0]->attractionType, $events[0]->attractionSubType])->toBe(['Group', 'Band'])
+        ->and([$events[1]->attractionType, $events[1]->attractionSubType])->toBe(['Group', null])
+        ->and([$events[2]->attractionType, $events[2]->attractionSubType])->toBe(['Group', 'Tribute Band'])
+        ->and([$events[3]->attractionType, $events[3]->attractionSubType])->toBe(['Event Style', 'Fan Experiences']);
 
     Http::assertSent(fn (Request $r) => tmQuery($r)['classificationId'] === 'KZazBEonSMnZfZ7vAde'
         && tmQuery($r)['countryCode'] === 'GB'
@@ -321,4 +325,22 @@ it('skips unparseable dates in upcoming events too', function () {
     ]]])]);
 
     expect(app(TicketmasterClient::class)->upcomingEvents('A'))->toBe([]);
+});
+
+it('leaves discovery attraction type and subtype null when classifications are missing or malformed', function () {
+    $event = fn (string $id, array $attraction) => [
+        'id' => $id, 'name' => $id, 'dates' => ['start' => ['localDate' => '2027-01-01']],
+        '_embedded' => ['attractions' => [['id' => $id, 'name' => $id, ...$attraction]]],
+    ];
+    Http::fake(['app.ticketmaster.com/*' => Http::response(['_embedded' => ['events' => [
+        $event('E1', []),
+        $event('E2', ['classifications' => 'x']),
+        $event('E3', ['classifications' => [['type' => 'Group', 'subType' => ['name' => '']]]]),
+    ]]])]);
+
+    $events = app(TicketmasterClient::class)->eventsByClassification('C1', 'GB');
+
+    expect($events)->toHaveCount(3)
+        ->and(collect($events)->pluck('attractionType')->filter()->all())->toBe([])
+        ->and(collect($events)->pluck('attractionSubType')->filter()->all())->toBe([]);
 });

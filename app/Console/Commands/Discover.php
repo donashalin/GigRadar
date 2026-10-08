@@ -6,6 +6,7 @@ use App\Models\DiscoveryEvent;
 use App\Models\User;
 use App\Services\Ticketmaster\DiscoveryEventData;
 use App\Services\Ticketmaster\TicketmasterClient;
+use App\Support\TributeFilter;
 use App\Support\Vibe;
 use Illuminate\Console\Command;
 use Throwable;
@@ -86,6 +87,7 @@ class Discover extends Command
             'lng' => $c->lng,
             'ticket_url' => $c->ticketUrl,
             'status' => $c->status,
+            'exclude_reason' => TributeFilter::reason($data->attractionType, $data->attractionSubType, $data->attractionName, $c->name),
         ];
 
         $row = DiscoveryEvent::firstOrNew(['classification_id' => $classificationId, 'ticketmaster_event_id' => $c->id]);
